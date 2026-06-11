@@ -55,6 +55,11 @@ RUN mv docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh \
 # Now that the .git folder and pyproject.toml are correctly co-located, install the package
 RUN pip install --no-cache-dir .
 
+# Install runtime and compilation dependencies
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    vim-tiny \
+    && rm -rf /var/lib/apt/lists/*
+
 # Clean up ownership for the mapped directories
 RUN chown -R "$USER":"$GROUP" ${INSTALL_DIR} ${CONFIG_DIR} ${DATA_DIR} ${HOME_DIR}
 
@@ -62,6 +67,10 @@ RUN chown -R "$USER":"$GROUP" ${INSTALL_DIR} ${CONFIG_DIR} ${DATA_DIR} ${HOME_DI
 # Setup fallback internal app configs to redirect cleanly to the config volume
 RUN mkdir -p /etc/pymc-repeater/.pymc_repeater \
     && ln -s /etc/pymc-repeater/.pymc_repeater /root/.pymc_repeater
+
+# Inject vi-mode editing and the standard long-list alias globally into the system bash configuration
+RUN echo "set -o vi" >> /etc/bash.bashrc \
+    && echo "alias ll='ls -l'" >> /etc/bash.bashrc
 
 # Not needed with Balena
 #EXPOSE 8000
