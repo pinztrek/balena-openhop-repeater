@@ -73,7 +73,7 @@ RUN echo "set -o vi" >> /etc/bash.bashrc \
     && echo "alias ll='ls -l'" >> /etc/bash.bashrc
 
 # Not needed with Balena?
-EXPOSE 8000 8080
+EXPOSE 8000
 
 # Keeps the container alive for terminal access and debugging as requested
 #CMD ["sh", "-c", "df -h && sleep 300"]

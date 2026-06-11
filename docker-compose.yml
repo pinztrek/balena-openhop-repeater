@@ -3,7 +3,7 @@ services:
   pymc-repeater:
     build:
       context: .
-    network_mode: host
+    #network_mode: host
     privileged: true
     devices:
       - "/dev/bus/usb:/dev/bus/usb"
@@ -14,6 +14,9 @@ services:
     # SPI DEVICES PERMISSIONS
     cap_add:
       - SYS_RAWIO
+    ports:
+      - '8000:8000'  # Maps port 8000 on the host Pi to port 8000 inside the container
+      - '8080:8080'  # Maps port 8080 on the host Pi to port 8080 inside the container
     labels:
       io.balena.features.dbus: '1'
       io.balena.features.supervisor-api: '1'
