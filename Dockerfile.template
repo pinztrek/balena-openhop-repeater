@@ -67,4 +67,6 @@ RUN mkdir -p /etc/pymc-repeater/.pymc_repeater \
 #EXPOSE 8000
 
 # Keeps the container alive for terminal access and debugging as requested
-CMD ["sh", "-c", "df -h && sleep 300"]
+#CMD ["sh", "-c", "df -h && sleep 300"]
+# Check for config.yaml at boot; if missing, copy the example template, then show disk space and sleep
+CMD ["sh", "-c", "[ ! -f /etc/pymc_repeater/config.yaml ] && cp /opt/pymc_repeater/config.yaml.example /etc/pymc_repeater/config.yaml; df -h && sleep 300"]
