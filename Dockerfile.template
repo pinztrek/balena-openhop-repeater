@@ -56,7 +56,7 @@ RUN mv docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh \
 RUN pip install --no-cache-dir .
 
 # Install runtime and compilation dependencies
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-install-recommends \
     vim.tiny \
     && rm -rf /var/lib/apt/lists/*
 
