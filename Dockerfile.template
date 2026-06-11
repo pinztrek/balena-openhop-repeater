@@ -65,8 +65,8 @@ RUN chown -R "$USER":"$GROUP" ${INSTALL_DIR} ${CONFIG_DIR} ${DATA_DIR} ${HOME_DI
 
 # --- Balena Persistence Realignment ---
 # Setup fallback internal app configs to redirect cleanly to the config volume
-RUN mkdir -p /etc/pymc-repeater/.pymc_repeater \
-    && ln -s /etc/pymc-repeater/.pymc_repeater /root/.pymc_repeater
+RUN mkdir -p /etc/pymc_repeater/.pymc_repeater \
+    && ln -s /etc/pymc_repeater/.pymc_repeater /root/.pymc_repeater
 
 # Inject vi-mode editing and the standard long-list alias globally into the system bash configuration
 RUN echo "set -o vi" >> /etc/bash.bashrc \
