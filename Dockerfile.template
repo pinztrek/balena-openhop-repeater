@@ -1,16 +1,67 @@
-#FROM python:3.12-slim-bookworm
 FROM python:3.12-bookworm
 
-# Install git so we can clone the repository
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    git \
+ARG PACKAGE_VERSION=1.0.5
+ARG USER=repeater
+ARG GROUP=repeater
+ARG PUID=15888
+ARG PGID=15888
+ARG YQ_VERSION=v4.40.5
+
+ENV INSTALL_DIR=/opt/pymc_repeater \
+    CONFIG_DIR=/etc/pymc_repeater \
+    DATA_DIR=/var/lib/pymc_repeater \
+    HOME_DIR=/home/${USER} \
+    PATH=/home/${USER}/.local/bin:${PATH} \
+    PYTHONUNBUFFERED=1 \
+    SETUPTOOLS_SCM_PRETEND_VERSION_FOR_PYMC_REPEATER=${PACKAGE_VERSION} \
+    PUID=${PUID} \
+    PGID=${PGID}
+
+# Install runtime and compilation dependencies
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-install-recommends \
+    libffi-dev \
+    python3-rrdtool \
+    jq \
+    wget \
+    libusb-1.0-0 \
+    swig \
     && rm -rf /var/lib/apt/lists/*
 
-# Set the working directory inside the container
-WORKDIR /usr/src/app
+# Install yq using Balena's native architecture translation variable
+RUN wget -qO /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_%%BALENA_ARCH%%" \
+    && chmod +x /usr/local/bin/yq
 
-# Clone the repository directly into the current working directory
+# Create system user and groups
+RUN groupadd --gid "$PGID" "$GROUP" \
+    && useradd --uid "$PUID" --gid "$PGID" --home-dir "$HOME_DIR" --create-home --shell /usr/bin/bash "$USER"
+
+# Create target application and volume directories
+RUN mkdir -p ${INSTALL_DIR} ${CONFIG_DIR} ${DATA_DIR}
+
+# --- Pristine Git Build Stage ---
+# Set the working directory directly to the installation target location
+WORKDIR ${INSTALL_DIR}
+
+# Clone the repository straight into the target directory (maintaining the .git tree)
 RUN git clone https://github.com/pyMC-dev/pyMC_Repeater.git .
 
-# Entrypoint sequence: check disk space, then keep the container alive for terminal access
+# Place the entrypoint file in the system path where the app config expects it
+RUN mv docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh \
+    && chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Now that the .git folder and pyproject.toml are correctly co-located, install the package
+RUN pip install --no-cache-dir .
+
+# Clean up ownership for the mapped directories
+RUN chown -R "$USER":"$GROUP" ${INSTALL_DIR} ${CONFIG_DIR} ${DATA_DIR} ${HOME_DIR}
+
+# --- Balena Persistence Realignment ---
+# Setup fallback internal app configs to redirect cleanly to the config volume
+RUN mkdir -p /etc/pymc-repeater/.pymc_repeater \
+    && ln -s /etc/pymc-repeater/.pymc_repeater /root/.pymc_repeater
+
+# Not needed with Balena
+#EXPOSE 8000
+
+# Keeps the container alive for terminal access and debugging as requested
 CMD ["sh", "-c", "df -h && sleep 300"]
