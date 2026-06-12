@@ -59,47 +59,30 @@ RUN mv docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh \
 # Now that the .git folder and pyproject.toml are correctly co-located, install the package
 RUN pip install --no-cache-dir .
 
-# Install runtime and compilation dependencies
+# Install addit utils needed for runtime
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-install-recommends \
     vim.tiny \
     iproute2 \
     net-tools \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN apt-get update && apt-get install -y sudo && \
-    echo "repeater ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+    sudo \
+    && rm -rf /var/lib/apt/lists/* \
+    && echo "repeater ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 # Clean up ownership for the mapped directories
 RUN chown -R "$USER":"$GROUP" ${INSTALL_DIR} ${CONFIG_DIR} ${DATA_DIR} ${HOME_DIR}
-
-# --- Balena Persistence Realignment ---
-# Setup fallback internal app configs to redirect cleanly to the config volume
-#RUN mkdir -p /etc/pymc_repeater/.pymc_repeater \
-#    && ln -s /etc/pymc_repeater/.pymc_repeater /root/.pymc_repeater
 
 # Inject vi-mode editing and the standard long-list alias globally into the system bash configuration
 RUN echo "set -o vi" >> /etc/bash.bashrc \
     && echo "alias ll='ls -l'" >> /etc/bash.bashrc
 
-# Not needed with Balena?
+# 
 EXPOSE 8000
-
-
-# Copy the example config to the target directory during the build
-#RUN cp ${INSTALL_DIR}/config.yaml.example ${CONFIG_DIR}/config.yaml
-
 
 # Copy the script and make it executable
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod a+rx /usr/local/bin/docker-entrypoint.sh
 
 USER ${USER}
-
-
-# Keeps the container alive for terminal access and debugging as requested
-# Check for config.yaml at boot; if missing, copy the example template, then show disk space and sleep
-#CMD ["sh", "-c", "[ ! -f /etc/pymc_repeater/config.yaml ] && cp /opt/pymc_repeater/config.yaml.example /etc/pymc_repeater/config.yaml; df -h && sleep 300"]
-#CMD ["pymc-repeater", "--config", "/etc/pymc_repeater/config.yaml]
 
 # 1. Set the entrypoint script
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
