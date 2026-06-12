@@ -71,8 +71,18 @@ if [[ "$OWNER" ]]; then
 fi
 
 if [[ "$NODE_NAME" ]]; then
-    echo "Set owner_info to $NODE_NAME"
+    echo "Set node_name to $NODE_NAME"
     yq -i '.repeater.node_name = env(NODE_NAME)' config.yaml
+fi
+
+if [[ "$LAT" ]]; then
+    echo "Set LAT to $LAT"
+    yq -i '.repeater.lattitude = env(LAT)' config.yaml
+fi
+
+if [[ "$LON" ]]; then
+    echo "Set LON to $LON"
+    yq -i '.repeater.longitude = env(LON)' config.yaml
 fi
 
 
