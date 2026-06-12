@@ -20,7 +20,7 @@ WORKDIR /app
 
 # Clone and install
 RUN git clone https://github.com/pyMC-dev/pyMC_Repeater.git . \
-    && pip install --no-cache-dir --target=/build/pymc_repeater .
+    && pip install --no-cache-dir  .
 
 # --- Stage 2: Runtime ---
 #FROM python:3.12-bookworm-slim
@@ -51,16 +51,17 @@ RUN groupadd --gid "$PGID" "$GROUP" \
     && usermod -aG gpio "$USER" \
     && echo "repeater ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
-# Copy the entire installation from the builder
-COPY --from=builder /build/pymc_repeater /opt/pymc_repeater
+# Copy the installed site-packages
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 
-# Add the bin directory to PATH so 'pymc-repeater' command is found
-ENV PATH=/opt/pymc_repeater/bin:$PATH
+# Copy the binaries (scripts)
+COPY --from=builder /usr/local/bin /usr/local/bin
+
 
 # Copy the installed library
-COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+#COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 # Copy the executable wrapper
-COPY --from=builder /usr/local/bin/pymc-repeater /usr/local/bin/pymc-repeater
+#COPY --from=builder /usr/local/bin/pymc-repeater /usr/local/bin/pymc-repeater
 
 # Create directories and set ownership
 RUN mkdir -p /opt/pymc_repeater /etc/pymc_repeater /var/lib/pymc_repeater \
