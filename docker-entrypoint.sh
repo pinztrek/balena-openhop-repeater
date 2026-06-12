@@ -77,7 +77,7 @@ fi
 
 if [[ "$LAT" ]]; then
     echo "Set LAT to $LAT"
-    yq -i '.repeater.lattitude = env(LAT)' config.yaml
+    yq -i '.repeater.latitude = env(LAT)' config.yaml
 fi
 
 if [[ "$LON" ]]; then
