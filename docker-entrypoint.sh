@@ -62,6 +62,16 @@ if [ ! -f /etc/pymc_repeater/config.yaml ]; then
     sudo chown repeater:repeater /etc/pymc_repeater/config.yaml
 fi
 
+if [[ "$OWNER" ]]; then
+    echo "Set owner_info to $OWNER"
+    yq -i '.repeater.owner_info = env(OWNER)' config.yaml
+fi
+
+if [[ "$NODE_NAME" ]]; then
+    echo "Set owner_info to $NODE_NAME"
+    yq -i '.repeater.node_name = env(NODE_NAME)' config.yaml
+fi
+
 cd /etc/pymc_repeater
 
 echo "docker-entrypoint.sh starting app"
