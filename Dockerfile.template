@@ -31,7 +31,6 @@ ENV USER=repeater \
     GROUP=repeater \
     PUID=15888 \
     PGID=15888 \
-    PATH=/home/repeater/.local/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive
 
@@ -47,7 +46,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-ins
 # Create system user, group, and permissions
 RUN groupadd --gid "$PGID" "$GROUP" \
     && groupadd -f gpio \
-    && useradd --uid "$PUID" --gid "$PGID" --home-dir /home/repeater --create-home --shell /usr/bin/bash "$USER" \
+    && useradd --uid "$PUID" --gid "$PGID" --home-dir /var/lib/pymc_repeater --create-home --shell /usr/bin/bash "$USER" \
     && usermod -aG gpio "$USER" \
     && echo "repeater ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
@@ -65,7 +64,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Create directories and set ownership
 RUN mkdir -p /opt/pymc_repeater /etc/pymc_repeater /var/lib/pymc_repeater \
-    && chown -R repeater:repeater /opt/pymc_repeater /etc/pymc_repeater /var/lib/pymc_repeater /home/repeater/.local
+    && chown -R repeater:repeater /opt/pymc_repeater /etc/pymc_repeater /var/lib/pymc_repeater 
 
 # Install yq 
 RUN BALENA_ARCH_CLEAN="%%BALENA_ARCH%%" \
