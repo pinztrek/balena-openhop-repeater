@@ -83,7 +83,10 @@ EXPOSE 8000
 
 USER ${USER}
 
+# Copy the example config to the target directory during the build
+RUN cp ${INSTALL_DIR}/config.yaml.example ${CONFIG_DIR}/config.yaml
+
 # Keeps the container alive for terminal access and debugging as requested
 # Check for config.yaml at boot; if missing, copy the example template, then show disk space and sleep
 #CMD ["sh", "-c", "[ ! -f /etc/pymc_repeater/config.yaml ] && cp /opt/pymc_repeater/config.yaml.example /etc/pymc_repeater/config.yaml; df -h && sleep 300"]
-CMD ["pymc-repeater", "--config", "/etc/pymc_repeater/config.yaml"]
+CMD ["pymc-repeater", "--config", "/etc/pymc_repeater/config.yaml && sleep 120"]
