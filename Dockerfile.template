@@ -1,92 +1,74 @@
-FROM python:3.12-bookworm
+# --- Stage 1: Build & Install ---
+FROM python:3.12-bookworm AS builder
 
-ARG PACKAGE_VERSION=1.0.5
-ARG USER=repeater
-ARG GROUP=repeater
-ARG PUID=15888
-ARG PGID=15888
+# Build-time arguments
 ARG YQ_VERSION=v4.40.5
 
-ENV INSTALL_DIR=/opt/pymc_repeater \
-    CONFIG_DIR=/etc/pymc_repeater \
-    DATA_DIR=/var/lib/pymc_repeater \
-    #HOME_DIR=/home/${USER} \
-    #HOME_DIR=${DATA_DIR} \
-    HOME_DIR=/var/lib/pymc_repeater \
-    PATH=/home/${USER}/.local/bin:${PATH} \
-    PYTHONUNBUFFERED=1 \
-    SETUPTOOLS_SCM_PRETEND_VERSION_FOR_PYMC_REPEATER=${PACKAGE_VERSION} \
-    PUID=${PUID} \
-    PGID=${PGID}
-
-# Install runtime and compilation dependencies
+# Install build dependencies
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-install-recommends \
+    git \
     libffi-dev \
-    python3-rrdtool \
-    jq \
-    wget \
-    libusb-1.0-0 \
+    libusb-1.0-0-dev \
     swig \
     && rm -rf /var/lib/apt/lists/*
 
-# Install yq using Balena's native architecture translation variable
-# Fetch yq, safely translating the 'aarch64' string to 'arm64' for the GitHub release filename
+WORKDIR /app
+
+# Clone and install
+RUN git clone https://github.com/pyMC-dev/pyMC_Repeater.git . \
+    && pip install --no-cache-dir --user .
+
+# --- Stage 2: Runtime ---
+FROM python:3.12-slim
+
+# Runtime environment variables
+ENV USER=repeater \
+    GROUP=repeater \
+    PUID=15888 \
+    PGID=15888 \
+    PATH=/home/repeater/.local/bin:$PATH \
+    PYTHONUNBUFFERED=1
+
+# Install runtime dependencies (yq, utils)
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-install-recommends \
+    jq \
+    vim.tiny \
+    iproute2 \
+    net-tools \
+    sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create system user, group, and permissions
+RUN groupadd --gid "$PGID" "$GROUP" \
+    && groupadd -f gpio \
+    && useradd --uid "$PUID" --gid "$PGID" --home-dir /home/repeater --create-home --shell /usr/bin/bash "$USER" \
+    && usermod -aG gpio "$USER" \
+    && echo "repeater ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+# Copy the installed library
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+# Copy the executable wrapper
+COPY --from=builder /usr/local/bin/pymc-repeater /usr/local/bin/pymc-repeater
+
+# Create directories and set ownership
+RUN mkdir -p /opt/pymc_repeater /etc/pymc_repeater /var/lib/pymc_repeater \
+    && chown -R repeater:repeater /opt/pymc_repeater /etc/pymc_repeater /var/lib/pymc_repeater /home/repeater/.local
+
+# Install yq 
 RUN BALENA_ARCH_CLEAN="%%BALENA_ARCH%%" \
     && if [ "${BALENA_ARCH_CLEAN}" = "aarch64" ]; then YQ_ARCH="arm64"; else YQ_ARCH="${BALENA_ARCH_CLEAN}"; fi \
     && wget -qO /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${YQ_ARCH}" \
     && chmod +x /usr/local/bin/yq
 
-# Create system user and groups
-RUN groupadd --gid "$PGID" "$GROUP" \
-    && groupadd -f gpio \
-    && useradd --uid "$PUID" --gid "$PGID" --home-dir "$HOME_DIR" --create-home --shell /usr/bin/bash "$USER" \
-    && usermod -aG gpio "$USER"
+# Setup environment config
+RUN echo "set -o vi" >> /etc/bash.bashrc && echo "alias ll='ls -l'" >> /etc/bash.bashrc
 
-# Create target application and volume directories
-RUN mkdir -p ${INSTALL_DIR} ${CONFIG_DIR} ${DATA_DIR}
-
-# --- Pristine Git Build Stage ---
-# Set the working directory directly to the installation target location
-WORKDIR ${INSTALL_DIR}
-
-# Clone the repository straight into the target directory (maintaining the .git tree)
-RUN git clone https://github.com/pyMC-dev/pyMC_Repeater.git .
-
-# Place the entrypoint file in the system path where the app config expects it
-RUN mv docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh \
-    && chmod +x /usr/local/bin/docker-entrypoint.sh
-
-# Now that the .git folder and pyproject.toml are correctly co-located, install the package
-RUN pip install --no-cache-dir .
-
-# Install addit utils needed for runtime
-RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-install-recommends \
-    vim.tiny \
-    iproute2 \
-    net-tools \
-    sudo \
-    && rm -rf /var/lib/apt/lists/* \
-    && echo "repeater ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-
-# Clean up ownership for the mapped directories
-RUN chown -R "$USER":"$GROUP" ${INSTALL_DIR} ${CONFIG_DIR} ${DATA_DIR} ${HOME_DIR}
-
-# Inject vi-mode editing and the standard long-list alias globally into the system bash configuration
-RUN echo "set -o vi" >> /etc/bash.bashrc \
-    && echo "alias ll='ls -l'" >> /etc/bash.bashrc
-
-# 
-EXPOSE 8000
-
-# Copy the script and make it executable
+# Copy entrypoint
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod a+rx /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-USER ${USER}
+USER repeater
+WORKDIR /opt/pymc_repeater
 
-# 1. Set the entrypoint script
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-
-# 2. Set the default command (the arguments to the script)
 #CMD ["pymc-repeater", "--config", "/etc/pymc_repeater/config.yaml"]
-#CMD ["sh", "-c", "[ ! -f /etc/pymc_repeater/config.yaml ] && cp /opt/pymc_repeater/config.yaml.example /etc/pymc_repeater/config.yaml; pymc-repeater --config /etc/pymc_repeater/config.yaml || sleep infinity"]
