@@ -19,6 +19,8 @@ This project provides a containerized environment for running and managing `pymc
 
 ## 2. Deploy by clicking the URL/Button below:
 [![balena deploy button](assets/images/deploy.svg)](https://dashboard.balena-cloud.com/deploy?repoUrl=https://github.com/pinztrek/balena-pymc-repeater)
+### OR for bleeding edge:
+[![balena deploy button](assets/images/deploy.svg)](https://dashboard.balena-cloud.com/deploy?repoUrl=https://github.com/pinztrek/balena-pymc-repeater-dev)
 
 ## 3. Once logged into balena, it will create a fleet for *balena-pymc-repeater*
 ## 4. Create your device and download the disk image
