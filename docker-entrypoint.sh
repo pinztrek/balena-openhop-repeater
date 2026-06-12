@@ -16,6 +16,12 @@ fi
 
 ls -al /dev/gpi*
 
+# Seed the radio settings if missing
+if [ ! -f /var/lib/pymc_repeater/radioi-settings.json ]; then
+    echo "Install radio  files..."
+    sudo cp /opt/pymc_repeater/radio* /var/lib/pymc_repeater
+    sudo chown repeater:repeater /var/lib/pymc_repeater/radio*
+fi
 # Seed the configuration if missing
 if [ ! -f /etc/pymc_repeater/config.yaml ]; then
     echo "Initializing default configuration..."
