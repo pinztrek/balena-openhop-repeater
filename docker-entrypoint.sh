@@ -99,9 +99,17 @@ if [[ "$LON" ]]; then
     yq -i '.repeater.longitude = env(LON)' config.yaml
 fi
 
-if [[ "$KEY" ]]; then
-    echo "Set KEY to $KEY"
-    yq -i '.repeater.identiy_key = env(KEY)' config.yaml
+if [[ "$KEY_HEX" ]]; then
+    echo "Set KEY_HEX to $KEY_HEX"
+    KEY_BASE64=$(python3 -c "import base64, binascii; print(base64.b64encode(binascii.unhexlify('$KEY_HEX')).decode())")
+    echo "$KEY_HEX"
+    echo "$KEY_BASE64"
+    export KEY_BASE64
+fi
+
+if [[ "$KEY_BASE64" ]]; then
+    echo "Set KEY_BASE64 to $KEY_BASE64"
+    yq -i '.identity_key = env(KEY_BASE64) | .identity_key tag="!!binary"' config.yaml
 fi
 
 if [[ "$MAXFLOODHOPS" ]]; then
