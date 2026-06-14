@@ -129,6 +129,16 @@ if [[ "$READONLY" ]]; then
     yq -i '.repeater.security.allow_read_only = env(READONLY)' config.yaml
 fi
 
+if [[ "$ADVERT" ]]; then
+    echo "Set ADVERT to $ADVERT"
+    yq -i '.repeater.send_advert_interval_hours = env(ADVERT)' config.yaml
+fi
+
+if [[ "$PENALTY" ]]; then
+    echo "Set PENALTY to $PENALTY"
+    yq -i '.repeater.advert_penalty_box.enabled = env(PENALTY)' config.yaml
+fi
+
 if [[ "$UNSCOPED" ]]; then
     echo "Set UNSCOPED to $UNSCOPED"
     yq -i '.mesh.unscoped_flood_allow = env(UNSCOPED)' config.yaml
