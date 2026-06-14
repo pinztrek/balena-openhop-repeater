@@ -6,14 +6,17 @@ echo "docker-entrypoint.sh started"
 if [ -e /dev/gpiochip0 ]; then
     echo "override gpio groups..."
     sudo chgrp gpio /dev/gpiochip*
-    sudo chmod g+rw /dev/gpiochip*
+    #sudo chmod g+rw /dev/gpiochip*
+    # should not need this, but debugging perms
+    sudo chmod a+rw /dev/gpiochip*
 fi
 
 # If you also need access to gpiomem
 if [ -e /dev/gpiomem ]; then
     echo "override gpiomem groups..."
     sudo chgrp gpio /dev/gpiomem
-    sudo chmod g+rw /dev/gpiomem
+    #sudo chmod g+rw /dev/gpiomem
+    sudo chmod a+rw /dev/gpiomem
 fi
 
 ls -al /dev/gpi*

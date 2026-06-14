@@ -83,11 +83,14 @@ RUN BALENA_ARCH_CLEAN="%%BALENA_ARCH%%" \
 RUN echo "set -o vi" >> /etc/bash.bashrc && echo "alias ll='ls -l'" >> /etc/bash.bashrc
 
 # Copy entrypoint
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+#COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY docker-entrypoint.sh /etc/pymc_repeater/docker-entrypoint.sh
+#RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /etc/pymc_repeater/docker-entrypoint.sh
 
 USER repeater
 WORKDIR /opt/pymc_repeater
 
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+#ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+ENTRYPOINT ["/etc/pymc_repeater/docker-entrypoint.sh"]
 #CMD ["pymc-repeater", "--config", "/etc/pymc_repeater/config.yaml"]
