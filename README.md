@@ -39,12 +39,13 @@ Specifically, no arcane docker/linux knowledge is required (though some linux aw
 
 ## 5. Power up your device
 * The environment will download and start up automatically.
-* The first time it boots it has to download the full OS, so it can take a while. Later updates will be faster. 
+
+_Note:_ The first time it boots it has to download the full OS, so it can take a while. Later updates will be faster. 
 * Once running, you can access the container terminal via the balenaCloud dashboard to run commands or inspect logs.
 * You'll want to note the local IP address on the dashboard if you do not know it already
 
 ## 6. Access the PYMC_repeater web control plane GUI
-* Using your browser navigate to: **http://your_IP_addr:8000
+* Using your browser navigate to: **http://your_IP_addr:8000**
 * The PYMC web gui should load and start the setup dialog. Work through this, selecting radio, region, etc. Note the current build dropped the Nebrahat, which I will readd. 
 * When it's complete, PYMC will restart the container. There is a sleep delay when PYMC exits which will need to expire, or you can hit the recycle button on the balena dashboard to restart the container. 
 * It'll come up running the gui, and you should start seeing packets if all is set correctly
