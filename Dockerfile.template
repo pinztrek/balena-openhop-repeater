@@ -23,7 +23,7 @@ RUN git clone https://github.com/pyMC-dev/pyMC_Repeater.git .
 RUN pip install --no-cache-dir  .
 RUN ls -l /app
 
-# --- Stage 2: Runtime ---
+# --- Stage 2: Runtime -----------------------------------------------
 #FROM python:3.12-bookworm-slim
 FROM python:3.12-slim
 
@@ -48,6 +48,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     sudo \
     wget \
     procps \
+    openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Create system user, group, and permissions
