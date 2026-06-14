@@ -114,8 +114,13 @@ if [[ "$MAXCLIENTS" ]]; then
     yq -i '.repeater.security.max_clients = env(MAXCLIENTS)' config.yaml
 fi
 
+if [[ "$ADMIN" ]]; then
+    echo "Set ADMIN pw to $ADMIN"
+    yq -i '.repeater.security.guest_password = env(ADMIN)' config.yaml
+fi
+
 if [[ "$GUEST" ]]; then
-    echo "Set GUEST to $GUEST"
+    echo "Set GUEST pw to $GUEST"
     yq -i '.repeater.security.guest_password = env(GUEST)' config.yaml
 fi
 

@@ -63,9 +63,20 @@ Set these via the balenaCloud dashboard for your fleet or specific device to con
 * **NODENAME:** Set to desired node_name string, stores in config.yaml
 * **LAT:** Set to desired lattitude string, stores in config.yaml
 * **LON:** Set to desired longitude string, stores in config.yaml
+* **KEY** Set to desired identy key (repeater.identiy_key)
+* **MAXFLOODHOPS** Set to desired hop limit, (repeater.max_flood_hops)
+* **MAXCLIENTS** Set to increase or limit the number of web clients
+* **ADMIN** Set admin pw (repeater.security.admin_password))
+* **GUEST** Set guest pw (repeater.security.guest_password)
+* **READONLY** Set to enable read only access (security.allow_read_only)
+* **UNSCOPED** Set to limit unscoped forwarding (mesh.unscoped_flood_allow)
+* **PATHHASH** Set to change path hash # of bytes (mesh.path_hash_mode) default is 1 for 2 byte
+* **TXDELAY** Set to change TX delay factor (delays.tx_delay_factor) default is 1.25
+* **IATA** set for broker airport code reporting (mqtt_brokers,iata_code)
+* **EMAIL** Set for broker email (req'd)  (mqtt_brokers.email)
+
 
 ***Planned***
-* **KEY:** Set to desired identity_key from existing config, sets as key in config.yaml
 * **REGION:** Set to desired region radio preset, stores in config.yaml
 * **PASSWORD:** Set to desired admin panel password, stores in config.yaml
 
