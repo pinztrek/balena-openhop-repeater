@@ -111,7 +111,7 @@ fi
 
 if [[ "$KEY_BASE64" ]]; then
     echo "Set KEY_BASE64 to $KEY_BASE64"
-    yq -i '.identity_key = env(KEY_BASE64) | .repeater.identity_key tag="!!binary "' config.yaml
+    yq -i '.identity_key = env(KEY_BASE64) | .repeater.identity_key tag="!!binary"' config.yaml
 fi
 
 if [[ "$MAXFLOODHOPS" ]]; then
