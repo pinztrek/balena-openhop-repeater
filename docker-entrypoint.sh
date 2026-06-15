@@ -101,7 +101,9 @@ fi
 
 if [[ "$KEY_HEX" ]]; then
     echo "Set KEY_HEX to $KEY_HEX"
-    KEY_BASE64=$(python3 -c "import base64, binascii; print(base64.b64encode(binascii.unhexlify('$KEY_HEX')).decode())")
+    #KEY_BASE64=$(python3 -c "import base64, binascii; print(base64.b64encode(binascii.unhexlify('$KEY_HEX')).decode())")
+
+    KEY_BASE64=$(python3 -c "import sys, base64; print(base64.b64encode(bytes.fromhex('$KEY_HEX')).decode())")
     echo "$KEY_HEX"
     echo "$KEY_BASE64"
     export KEY_BASE64
@@ -109,7 +111,7 @@ fi
 
 if [[ "$KEY_BASE64" ]]; then
     echo "Set KEY_BASE64 to $KEY_BASE64"
-    yq -i '.identity_key = env(KEY_BASE64) | .repeater.identity_key tag="!!binary"' config.yaml
+    yq -i '.identity_key = env(KEY_BASE64) | .repeater.identity_key tag="!!binary "' config.yaml
 fi
 
 if [[ "$MAXFLOODHOPS" ]]; then
