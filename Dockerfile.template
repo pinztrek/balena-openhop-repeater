@@ -10,7 +10,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 # origin/main
 # or a particular commit hash:
 # 6e9b798
-ARG TARGET_HASH=origin/dev
+#ARG TARGET_HASH=origin/dev
+ARG TARGET_HASH= "23078de"
 
 # Build-time arguments
 
@@ -27,7 +28,7 @@ WORKDIR /app
 # 1. Clone the repository
 WORKDIR /app
 RUN git clone -b dev https://github.com/pyMC-dev/pyMC_Repeater.git . && \
-    git fetch origin && \
+    git fetch --all && \
     git checkout $TARGET_HASH && \
     git fetch --tags 
 
