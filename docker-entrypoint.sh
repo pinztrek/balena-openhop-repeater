@@ -218,7 +218,7 @@ if [[ "$CLOUDFLARE" ]]; then
     echo "Starting cloudflared"
     echo cloudflared --loglevel warn tunnel run --token "$CLOUDFLARE"
     (sleep 20 ; /usr/local/bin/cloudflared --loglevel warn \
-    tunnel run --token "$TUNNEL_TOKEN") &
+    tunnel run --token "$CLOUDFLARE") &
     #sudo /usr/local/bin/cloudflared --loglevel warn tunnel run --token "$CLOUDFLARE"
 fi
 
