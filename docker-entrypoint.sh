@@ -199,7 +199,7 @@ fi
 
 if [[ "$BROKER" ]]; then
     echo "Setting up mqtt brokers"
-    yq -i '.mqtt_brokers.brokers = [load("broker.yaml")]' config.yaml
+    yq -i '.mqtt_brokers.brokers = [load("/etc/pymc_repeater/mqtt_broker.yaml")]' config.yaml
     
 fi
 
