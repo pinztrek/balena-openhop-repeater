@@ -118,6 +118,11 @@ RUN echo "set -o vi" >> /etc/bash.bashrc && echo "alias ll='ls -l'" >> /etc/bash
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+# Copy broker yaml
+COPY broker.yaml /etc/pymc_repeater/broker.yaml
+RUN chown $USER /etc/pymc_repeater/broker.yaml
+RUN chmod a+rw /etc/pymc_repeater/broker.yaml
+
 USER repeater
 WORKDIR /etc/pymc_repeater
 
