@@ -197,6 +197,21 @@ if [[ "$PASSWD" ]]; then
     chattr +i /etc/shadow 2>/dev/null
 fi
 
+if [[ "$MESHMAPPER" ]]; then
+    echo "Setting up meshmapper"
+    yq -i '.mqtt_brokers.brokers = [{"name": "MeshMapper", \
+      "enabled": true, \
+      "transport": "websockets", \
+      "host": "mqtt.meshmapper.net", \
+      "port": 443, \
+      "format": "letsmesh", \
+      "disallowed_packet_types": [], \
+      "retain_status": false, \
+      "tls": {"enabled": true, "insecure": false}, \
+      "use_jwt_auth": true, \
+      "audience": "mqtt.meshmapper.net"}]' config.yaml
+fi
+
 
 # start sshd
 echo "Starting sshd"
