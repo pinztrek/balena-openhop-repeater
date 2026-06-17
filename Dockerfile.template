@@ -4,6 +4,13 @@ FROM python:3.12 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Default to dev current if not overridden at fleet level
+# Could also be:
+# origin/main
+# or a particular commit hash:
+# 6e9b798
+ARG TARGET_HASH=origin/dev
+
 # Build-time arguments
 
 
@@ -19,7 +26,9 @@ WORKDIR /app
 # 1. Clone the repository
 WORKDIR /app
 RUN git clone -b dev https://github.com/pyMC-dev/pyMC_Repeater.git . && \
-    git fetch --tags
+    git fetch origin && \
+    git checkout $TARGET_HASH
+    git fetch --tags 
 
 RUN pip install --no-cache-dir setuptools setuptools-scm && \
     export SETUPTOOLS_SCM_PRETEND_VERSION=$(python3 -m setuptools_scm) && \
