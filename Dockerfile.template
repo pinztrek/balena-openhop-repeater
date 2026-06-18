@@ -11,7 +11,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 # or a particular commit hash:
 # 6e9b798
 #ARG TARGET_HASH=origin/dev
-ARG TARGET_HASH
+ARG TARGET_HASH="7968473"
+RUN echo "DEBUG: TARGET_HASH is currently set to ${TARGET_HASH}"
 
 # Build-time arguments
 
@@ -28,7 +29,6 @@ WORKDIR /app
 # 1. Clone the repository
 WORKDIR /app
 
-RUN echo "DEBUG: TARGET_HASH is currently set to ${TARGET_HASH}"
 
 RUN git clone -b dev https://github.com/pyMC-dev/pyMC_Repeater.git . && \
     git fetch --all && \
