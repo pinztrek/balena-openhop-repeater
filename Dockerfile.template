@@ -11,7 +11,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # or a particular commit hash:
 # 6e9b798
 #ARG TARGET_HASH=origin/dev
-#ARG TARGET_HASH="23078de"
+ARG TARGET_HASH
 
 # Build-time arguments
 
