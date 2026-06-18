@@ -2,7 +2,10 @@ version: '2.1'
 
 services:
   pymc-repeater:
-    build: .
+    build: 
+      context: .
+      args:
+        TARGET_HASH: "origin/dev"
     privileged: true
     cap_add:
       - SYS_RAWIO
