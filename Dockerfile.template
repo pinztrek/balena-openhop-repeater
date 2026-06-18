@@ -4,18 +4,16 @@ FROM python:3.12 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Build-time arguments
 # Default to dev current if not overridden at fleet level
 # managed in balena.yml, devaults to origin/dev or a particular hash
 # Could also be:
 # origin/main
 # or a particular commit hash:
-# 6e9b798
-#ARG TARGET_HASH=origin/dev
-ARG TARGET_HASH="dcaa4ac"
+#ARG TARGET_HASH="dcaa4ac"
+
+ARG TARGET_HASH=origin/dev
 RUN echo "DEBUG: TARGET_HASH is currently set to ${TARGET_HASH}"
-
-# Build-time arguments
-
 
 # Install build dependencies
 RUN DEBIAN_FRONTEND=noninteractive apt-get update 
