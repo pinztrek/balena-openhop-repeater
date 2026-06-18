@@ -27,6 +27,8 @@ services:
       - "plugdev"
       - "gpio"
     restart: always
+    args:
+      - TARGET_HASH=${TARGET_HASH}
 
 volumes:
   config:
