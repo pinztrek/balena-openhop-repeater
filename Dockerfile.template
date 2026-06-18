@@ -11,7 +11,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # or a particular commit hash:
 # 6e9b798
 #ARG TARGET_HASH=origin/dev
-ARG TARGET_HASH="7968473"
+ARG TARGET_HASH="dcaa4ac"
 RUN echo "DEBUG: TARGET_HASH is currently set to ${TARGET_HASH}"
 
 # Build-time arguments
