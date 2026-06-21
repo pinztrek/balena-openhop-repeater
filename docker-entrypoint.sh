@@ -41,6 +41,9 @@ fi
 echo "delay set to $PYMC_DELAY"
 
 
+# Configuration Paths
+PYMC_LIB="/var/lib/pymc_repeater"
+PYMC_CFG="/etc/pymc_repeater"
 cfgdir="/etc/pymc_repeater"
 installdir="/opt/pymc_repeater"
 rundir="/opt/pymc_repeater"
@@ -98,6 +101,77 @@ if [[ "$LON" ]]; then
     echo "Set LON to $LON"
     yq -i '.repeater.longitude = env(LON)' config.yaml
 fi
+
+# Define full file paths
+SETTINGS_FILE="$PYMC_LIB/radio-settings.json"
+CONFIG_FILE="$PYMC_CFG/config.yaml"
+
+if [ "$US" ]; then
+    echo "Set radio to US defaults"
+    yq -iP '
+      .radio.bandwidth = 62500 |
+      .radio.coding_rate = 8 |
+      .radio.frequency = 910525000 |
+      .radio.implicit_header = false |
+      .radio.preamble_length = 17 |
+      .radio.spreading_factor = 7 |
+      .radio.tx_power = 14 
+    ' $CONFIG_FILE 
+fi
+
+if [ "$RADIO" ]; then
+    if [ ! -f "$SETTINGS_FILE" ]; then
+        echo "Error: $SETTINGS_FILE not found."
+        exit 1
+    fi
+
+    # Assume sx1262 for now
+    echo "Set radio to sx1262"
+    yq -iP '
+      .radio_type = "sx1262"
+    ' $CONFIG_FILE 
+
+    echo '---------------------debug------------'
+    grep pow $CONFIG_FILE
+
+    if [ "$RADIO" = "nebra" ]; then
+        RADIO="nebrahat"
+        echo "Detected 'nebra', updated radio to 'nebrahat'."
+    fi
+
+
+    # Now read the radio presets, and then save into config.yaml
+    # Have to do this in two steps due to yq funkiness
+    echo Lookup $RADIO and update values into $CONFIG_FILE
+
+    #RADIO_JSON=$(jq -c ".hardware.$RADIO | del(.name)" "$SETTINGS_FILE")
+    RADIO_JSON=$(jq -c "{sx1262: .hardware.$RADIO} | del(.name)" "$SETTINGS_FILE")
+    export RADIO_JSON
+    echo "Read: $RADIO_JSON"
+    echo "Converted to yaml"
+    echo $RADIO_JSON | yq -P
+    echo Now write to $CONFIG_FILE
+    yq -i '.sx1262 = (env(RADIO_JSON) | from_json)' "$CONFIG_FILE"
+    yq -iP $CONFIG_FILE
+
+
+
+
+    #RADIO_JSON=$(jq -c "{.hardware.$RADIO | del(.name)}" $SETTINGS_FILE) 
+    #export RADIO_JSON
+    #echo "Read: $RADIO_JSON"
+    #echo $RADIO_JSON | yq -P
+    #echo Now write to $CONFIG_FILE
+    ##yq -i '.sx1262 = env(RADIO_JSON) | .sx1262 style=""' $CONFIG_FILE \
+    #yq -i '.sx1262 = env(RADIO_JSON) | .sx1262 style=""' $CONFIG_FILE \
+    #&& yq -iP config.yaml
+    #    echo "Successfully updated $CONFIG_FILE with hardware profile '$RADIO'."
+    #else
+        #echo "Error: Radio profile '$RADIO' not found in $SETTINGS_FILE."
+        #exit 1
+    #fi
+fi
+
 
 if [[ "$KEY_HEX" ]]; then
     echo "Set KEY_HEX to $KEY_HEX"
