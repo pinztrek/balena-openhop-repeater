@@ -78,6 +78,14 @@ if [ ! -f "$CONFIG_FILE" ]; then
     sudo chown repeater:repeater $CONFIG_FILE
 fi
 
+# Seed policy.yaml only if POLICY is set and no policy file exists yet
+POLICY_FILE="$CONFIG_DIR/policy.yaml"
+if [[ "$POLICY" ]] && [ ! -f "$POLICY_FILE" ]; then
+    echo "Seeding default policy.yaml..."
+    sudo cp "$OPT_DIR/policy.yaml.example" "$POLICY_FILE"
+    sudo chown repeater:repeater "$POLICY_FILE"
+fi
+
 # make changes to config.yaml as needed
 cd $CONFIG_DIR
 
@@ -307,5 +315,10 @@ grep -q 'pymc_repeater' "$CONFIG_FILE" && sed -i 's|pymc_repeater|openhop_repeat
 echo "docker-entrypoint.sh starting app"
 # Now run the application
 #exec "$@"
-openhop-repeater ; echo "OPENHOP exited, sleeping $OPENHOP_DELAY seconds"; sleep $OPENHOP_DELAY
+openhop-repeater
+echo "OPENHOP exited, backing up $LIB_DIR to $CONFIG_DIR/backup"
+mkdir -p "$CONFIG_DIR/backup"
+cp "$LIB_DIR"/rep* "$CONFIG_DIR/backup/"
+echo "sleeping $OPENHOP_DELAY seconds"
+sleep $OPENHOP_DELAY
 echo "docker-entrypoint.sh exit"
