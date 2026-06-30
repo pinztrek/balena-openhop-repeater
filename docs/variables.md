@@ -39,6 +39,9 @@ Set these via the balenaCloud dashboard for your fleet or specific device to con
 * **RADIO** Set to hardware profile name from `radio-settings.json` to configure SX1262 GPIO pin assignments (e.g. `RADIO=zebra`, `RADIO=nebrahat`). Merges profile into the `sx1262` config section.
 * **PWR** Set to desired power in dbm to override radio/region defaults
 
+***Logging***
+* **SYSLOG** Set to `ip:port` (e.g. `192.168.1.100:514`) to enable remote syslog forwarding. Validates as a plausible IP:port before activating. When set: starts rsyslogd, seeds `/etc/openhop_repeater/rsyslog.conf` with the target pre-configured (UDP, never overwrites existing), and pipes all openhop output through `logger` tagged with `NODE_NAME`. The source IP is identified by the receiving syslog server. See [docs/syslog.md](syslog.md) for server setup notes.
+
 ***Planned***
 * **RADIO_REGION** Select and configure the radio region presets by specifying the entry in the presets.
 * **REGION** Set repeater region configuration for packets (unrelated to the radio region above)
