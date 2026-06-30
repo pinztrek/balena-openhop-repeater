@@ -15,7 +15,7 @@ RUN echo "DEBUG: TARGET_HASH is currently set to ${TARGET_HASH}"
 RUN DEBIAN_FRONTEND=noninteractive apt-get update 
 
 RUN apt-get install -y --no-install-recommends \
-    git build-essential python3-dev libffi-dev libusb-1.0-0-dev swig \
+    git build-essential python3-dev libffi-dev libusb-1.0-0-dev swig librrd-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -31,7 +31,7 @@ RUN git clone -b dev https://github.com/openhop-dev/openhop_repeater.git . && \
 
 RUN pip install --no-cache-dir setuptools setuptools-scm && \
     export SETUPTOOLS_SCM_PRETEND_VERSION=$(python3 -m setuptools_scm) && \
-    pip install --no-cache-dir .[hardware]
+    pip install --no-cache-dir .[hardware,rrd]
 
 RUN pwd; ls -al ; grep -i version openhop_repeater.egg-info/PKG-INFO
 #RUN ls -al /usr/local/bin
