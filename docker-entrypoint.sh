@@ -297,7 +297,32 @@ sudo /usr/sbin/ntpd
 # start sshd
 if [[ "$SSH" ]]; then
     echo "Starting sshd"
-    sudo /usr/sbin/sshd 
+    sudo /usr/sbin/sshd
+fi
+
+if [[ "$SYSLOG" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+$ ]]; then
+    SYSLOG_CONF="$CONFIG_DIR/rsyslog.conf"
+    if [ ! -f "$SYSLOG_CONF" ]; then
+        echo "Creating rsyslog.conf targeting $SYSLOG..."
+        cat > "$SYSLOG_CONF" << EOF
+# rsyslog.conf - openhop_repeater
+# Restart the container after editing this file.
+
+# Creates /dev/log for local syslog() calls
+module(load="imuxsock")
+
+# Forward all messages to remote syslog server (UDP):
+*.* @${SYSLOG}
+
+# Alternate TCP (more reliable, change @ to @@):
+# *.* @@${SYSLOG}
+
+# Log to a local file instead:
+# *.* /var/log/syslog
+EOF
+    fi
+    echo "Starting rsyslogd"
+    sudo rsyslogd -f "$SYSLOG_CONF"
 fi
 
 if [[ "$CLOUDFLARE" ]]; then
@@ -315,7 +340,11 @@ grep -q 'pymc_repeater' "$CONFIG_FILE" && sed -i 's|pymc_repeater|openhop_repeat
 echo "docker-entrypoint.sh starting app"
 # Now run the application
 #exec "$@"
-openhop-repeater
+if [[ "$SYSLOG" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+$ ]]; then
+    openhop-repeater 2>&1 | logger -t openhop
+else
+    openhop-repeater
+fi
 echo "OPENHOP exited, backing up $LIB_DIR to $CONFIG_DIR/backup"
 mkdir -p "$CONFIG_DIR/backup"
 cp "$LIB_DIR"/rep* "$CONFIG_DIR/backup/"
