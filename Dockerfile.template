@@ -137,9 +137,9 @@ COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Copy default broker yaml
-COPY mqtt_broker.yaml /opt/openhop_repeater/mqtt_broker.yaml
-RUN chown $USER /opt/openhop_repeater/mqtt_broker.yaml
-RUN chmod a+rw /opt/openhop_repeater/mqtt_broker.yaml
+COPY mqtt_broker.yaml /opt/openhop_repeater/mqtt_broker.yaml.example
+RUN chown $USER /opt/openhop_repeater/mqtt_broker.yaml.example
+RUN chmod a+rw /opt/openhop_repeater/mqtt_broker.yaml.example
 
 USER repeater
 WORKDIR /etc/openhop_repeater

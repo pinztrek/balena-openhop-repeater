@@ -291,13 +291,30 @@ if [[ "$PASSWD" ]]; then
     chattr +i /etc/shadow 2>/dev/null
 fi
 
-if [[ "$BROKER" ]]; then
-    if [ ! -f "$CONFIG_DIR/mqtt_broker.yaml" ]; then
-        echo "Copy sample mqtt_broker.yaml file"
-        cp $OPT_DIR/mqtt* $CONFIG_DIR
+# BROKER=override forces both the mqtt_broker.yaml file and config.yaml's
+# mqtt_brokers.brokers back to the default example, every restart.
+# BROKER=1/true seeds mqtt_broker.yaml only if missing, and merges it into
+# config.yaml only if brokers aren't already configured there — so GUI-made
+# broker edits (which live in config.yaml) survive restarts.
+MQTT_BROKER_FILE="$CONFIG_DIR/mqtt_broker.yaml"
+if [[ "$BROKER" == "override" ]]; then
+    echo "BROKER=override, forcing default mqtt_broker.yaml..."
+    cp "$OPT_DIR/mqtt_broker.yaml.example" "$MQTT_BROKER_FILE"
+    sudo chown repeater:repeater "$MQTT_BROKER_FILE"
+elif [[ "$BROKER" ]] && [ ! -f "$MQTT_BROKER_FILE" ]; then
+    echo "Seeding default mqtt_broker.yaml..."
+    cp "$OPT_DIR/mqtt_broker.yaml.example" "$MQTT_BROKER_FILE"
+    sudo chown repeater:repeater "$MQTT_BROKER_FILE"
+fi
+
+if [[ "$BROKER" ]] && [ -f "$MQTT_BROKER_FILE" ]; then
+    CURRENT_BROKERS=$(yq '.mqtt_brokers.brokers // [] | length' config.yaml)
+    if [[ "$BROKER" == "override" ]] || [[ "$CURRENT_BROKERS" == "0" ]]; then
+        echo "Setting up mqtt brokers"
+        yq -i '.mqtt_brokers.brokers = load("mqtt_broker.yaml")' config.yaml
+    else
+        echo "mqtt_brokers.brokers already configured, leaving as-is (set BROKER=override to force)"
     fi
-    echo "Setting up mqtt brokers"
-    yq -i '.mqtt_brokers.brokers = [load("mqtt_broker.yaml")]' config.yaml
 fi
 
 
