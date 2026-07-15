@@ -29,7 +29,7 @@ policy_engine:
     then:
       action: drop
   - id: 3
-    name: '#bot'
+    name: bot
     enabled: true
     if:
       all:
@@ -42,7 +42,7 @@ policy_engine:
     then:
       action: drop
   - id: 4
-    name: '#wx'
+    name: wx
     enabled: true
     if:
       all:
