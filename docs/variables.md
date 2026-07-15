@@ -34,7 +34,7 @@ Set these via the balenaCloud dashboard for your fleet or specific device to con
 * **PATHHASH** Set to 0 or 1 change path hash # of bytes (mesh.path_hash_mode) default is 1 for 2 byte
 * **TXDELAY** Set to change TX delay factor (delays.tx_delay_factor) default is 1.25
 * **EMAIL** Set for broker email (normally req'd for mqtt)  (mqtt_brokers.email)
-* **POLICY** Set to `1` to enable policy support — seeds `policy.yaml` from the default example into `/etc/openhop_repeater/` if not already present. Existing policy files are never overwritten.
+* **POLICY** Set to `1` or `true` to enable policy support — seeds `policy.yaml` from the default example into `/etc/openhop_repeater/` if not already present (existing policy files are left alone). Set to `override` to force the default example over any existing `policy.yaml` on every restart. Leave blank/unset to do nothing.
 * **BROKER** Set to `1` to enable MQTT broker integration — merges `mqtt_broker.yaml` from `/etc/openhop_repeater/` into config.yaml (seeds from default if not present)
 * **US** Set to `1` to apply US/Canada radio region defaults to config.yaml (910.525MHz / SF7 / BW62.5)
 * **RADIO** Set to hardware profile name from `radio-settings.json` to configure SX1262 GPIO pin assignments (e.g. `RADIO=zebra`, `RADIO=nebrahat`). Merges profile into the `sx1262` config section.

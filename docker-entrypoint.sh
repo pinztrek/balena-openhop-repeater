@@ -83,9 +83,15 @@ if [ ! -f "$CONFIG_FILE" ]; then
     sudo chown repeater:repeater $CONFIG_FILE
 fi
 
-# Seed policy.yaml only if POLICY is set and no policy file exists yet
+# POLICY=override forces the default policy.yaml, replacing any existing one.
+# POLICY=1/true seeds the default policy.yaml only if one isn't already present.
+# Unset/blank POLICY leaves policy.yaml alone entirely.
 POLICY_FILE="$CONFIG_DIR/policy.yaml"
-if [[ "$POLICY" ]] && [ ! -f "$POLICY_FILE" ]; then
+if [[ "$POLICY" == "override" ]]; then
+    echo "POLICY=override, forcing default policy.yaml..."
+    sudo cp "$OPT_DIR/policy.yaml.example" "$POLICY_FILE"
+    sudo chown repeater:repeater "$POLICY_FILE"
+elif [[ "$POLICY" ]] && [ ! -f "$POLICY_FILE" ]; then
     echo "Seeding default policy.yaml..."
     sudo cp "$OPT_DIR/policy.yaml.example" "$POLICY_FILE"
     sudo chown repeater:repeater "$POLICY_FILE"
