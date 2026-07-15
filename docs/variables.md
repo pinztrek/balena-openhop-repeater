@@ -16,6 +16,7 @@ Set these via the balenaCloud dashboard for your fleet or specific device to con
 * **OPENHOP_CLEAN:** Set to `1` to restore wipe all config / data and start fresh
 * **OPENHOP_DEBUG:** Set to `1` to enable a 180-second sleep (useful for terminal access/debugging).
 * **OPENHOP_DELAY:** Set to desired sleep period (useful for terminal access/debugging). Overrides default 5 second sleep when _openhop_repeater_ exits.
+* **RECYCLE:** Set to desired number of seconds between forced restarts. Defaults to 21600 (6 hours). _openhop_repeater_ is stopped and the container exits (to be restarted by balena) once RECYCLE seconds elapse, or immediately if the app exits/dies on its own first.
 
 ***Advanced*** ( Typically only used for managing fleets of nodes remotely)
 * **KEY_HEX** Set identity key as hex string (repeater.identity_key) — auto-converted to base64 (uses same format as the convert script)

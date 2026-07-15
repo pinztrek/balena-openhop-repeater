@@ -40,6 +40,11 @@ if [[ ! "$OPENHOP_DELAY" ]]; then
 fi
 echo "delay set to $OPENHOP_DELAY"
 
+if [[ ! "$RECYCLE" ]]; then
+        RECYCLE=21600 # 6 hours
+fi
+echo "recycle set to $RECYCLE seconds"
+
 
 # Configuration Paths
 LIB_DIR="/var/lib/openhop_repeater"
@@ -346,16 +351,38 @@ fi
 
 grep -q 'pymc_repeater' "$CONFIG_FILE" && sed -i 's|pymc_repeater|openhop_repeater|g' "$CONFIG_FILE"
 
-echo "docker-entrypoint.sh starting app"
-# Now run the application
-#exec "$@"
 if [[ "$SYSLOG" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*(:[0-9]+)?$ ]]; then
     LOG_TAG="${NODE_NAME}"
     echo "Logging to syslog as $LOG_TAG"
-    openhop-repeater 2>&1 | tee >(logger -t "$LOG_TAG")
-else
-    openhop-repeater
+    # Redirect the rest of this script's stdout/stderr through tee+logger,
+    # rather than piping just the app, so `openhop-repeater &` below stays
+    # the last command and $! is its own PID (not tee's).
+    exec > >(tee >(logger -t "$LOG_TAG")) 2>&1
 fi
+
+echo "docker-entrypoint.sh starting app, recycling every ${RECYCLE}s"
+# Now run the application
+#exec "$@"
+openhop-repeater &
+APP_PID=$!
+echo "openhop-repeater started (pid $APP_PID)"
+
+( sleep "$RECYCLE" ) &
+TIMER_PID=$!
+
+# Wait for whichever finishes first: the app exiting, or the recycle timer.
+wait -n "$APP_PID" "$TIMER_PID"
+
+if kill -0 "$APP_PID" 2>/dev/null; then
+    echo "RECYCLE timer (${RECYCLE}s) expired, stopping openhop-repeater (pid $APP_PID)"
+    kill "$APP_PID"
+    wait "$APP_PID" 2>/dev/null
+else
+    echo "openhop-repeater stopped on its own (pid $APP_PID)"
+fi
+kill "$TIMER_PID" 2>/dev/null
+wait "$TIMER_PID" 2>/dev/null
+
 echo "OPENHOP exited, backing up $LIB_DIR to $CONFIG_DIR/backup"
 mkdir -p "$CONFIG_DIR/backup"
 cp "$LIB_DIR"/rep* "$CONFIG_DIR/backup/"
