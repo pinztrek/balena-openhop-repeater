@@ -35,7 +35,7 @@ Set these via the balenaCloud dashboard for your fleet or specific device to con
 * **TXDELAY** Set to change TX delay factor (delays.tx_delay_factor) default is 1.25
 * **EMAIL** Set for broker email (normally req'd for mqtt)  (mqtt_brokers.email)
 * **POLICY** Set to `1` or `true` to enable policy support — seeds `policy.yaml` from the default example into `/etc/openhop_repeater/` if not already present (existing policy files are left alone). Set to `override` to force the default example over any existing `policy.yaml` on every restart. Leave blank/unset to do nothing.
-* **BROKER** Set to `1` to enable MQTT broker integration — merges `mqtt_broker.yaml` from `/etc/openhop_repeater/` into config.yaml (seeds from default if not present)
+* **BROKER** Set to `1` or `true` to enable MQTT broker integration — seeds `mqtt_broker.yaml` from the default example into `/etc/openhop_repeater/` if not already present, and merges it into `config.yaml`'s `mqtt_brokers.brokers` only if brokers aren't already configured there (so GUI-made broker edits survive restarts). Set to `override` to force both the default `mqtt_broker.yaml` file and the `config.yaml` merge on every restart, discarding any edits. Leave blank/unset to do nothing. `mqtt_broker.yaml` is a plain YAML list of broker entries and is user-editable.
 * **US** Set to `1` to apply US/Canada radio region defaults to config.yaml (910.525MHz / SF7 / BW62.5)
 * **RADIO** Set to hardware profile name from `radio-settings.json` to configure SX1262 GPIO pin assignments (e.g. `RADIO=zebra`, `RADIO=nebrahat`). Merges profile into the `sx1262` config section.
 * **PWR** Set to desired power in dbm to override radio/region defaults
