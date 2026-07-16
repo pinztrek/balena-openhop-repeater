@@ -109,6 +109,7 @@ COPY --from=builder /app/convert* /usr/local/bin/
 COPY --from=builder /app/radio* /opt/openhop_repeater/
 COPY --from=builder /app/config.yaml.example /opt/openhop_repeater
 COPY policy.yaml /opt/openhop_repeater/policy.yaml.example
+COPY regions.yaml.example /opt/openhop_repeater/regions.yaml.example
 RUN sed -i 's/\(tx_delay_factor:\) 1.0/\1 1.25/' /opt/openhop_repeater/config.yaml.example
 RUN sed -i 's/\(path_hash_mode:\) 0/\1 1/' /opt/openhop_repeater/config.yaml.example
 RUN sed -i 's/\(max_clients:\) 1/\1 3/' /opt/openhop_repeater/config.yaml.example

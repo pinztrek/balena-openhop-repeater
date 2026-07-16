@@ -384,6 +384,22 @@ if [[ "$SYSLOG" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*(:[0-9]+)?$ ]]; then
 fi
 
 echo "docker-entrypoint.sh starting app, recycling every ${RECYCLE}s"
+
+# REGIONS=1/true seeds regions.yaml from the default example if missing, then
+# loads it into repeater.db's transport_keys table (full replace via
+# load-regions) prior to starting openhop-repeater.
+REGIONS_FILE="$CONFIG_DIR/regions.yaml"
+if [[ "$REGIONS" ]] && [ ! -f "$REGIONS_FILE" ]; then
+    echo "Seeding default regions.yaml..."
+    cp "$OPT_DIR/regions.yaml.example" "$REGIONS_FILE"
+    sudo chown repeater:repeater "$REGIONS_FILE"
+fi
+
+if [[ "$REGIONS" ]] && [ -f "$REGIONS_FILE" ]; then
+    echo "Loading regions from $REGIONS_FILE"
+    load-regions "$REGIONS_FILE"
+fi
+
 # Now run the application
 #exec "$@"
 openhop-repeater &
@@ -409,6 +425,12 @@ wait "$TIMER_PID" 2>/dev/null
 echo "OPENHOP exited, backing up $LIB_DIR to $CONFIG_DIR/backup"
 mkdir -p "$CONFIG_DIR/backup"
 cp "$LIB_DIR"/rep* "$CONFIG_DIR/backup/"
+
+if [[ "$REGIONS" ]]; then
+    echo "Saving current regions to $REGIONS_FILE"
+    dump-regions -o "$REGIONS_FILE"
+fi
+
 echo "sleeping $OPENHOP_DELAY seconds"
 sleep $OPENHOP_DELAY
 echo "docker-entrypoint.sh exit"
