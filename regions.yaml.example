@@ -2,13 +2,15 @@
 # These names/keys are almost certainly wrong for your install — tune them
 # before building (edit this file) or after deploying (edit the seeded
 # /etc/openhop_repeater/regions.yaml directly, or use dump-regions/load-regions).
+# Note that you can delete the transport key line and openhop will create it as needed
 - name: '#us-ga'
   flood_policy: allow
-  transport_key: N5Vb5HzPOGAglJI1SK0MiA==
 - name: '#us-ga-atl'
   flood_policy: allow
-  transport_key: naIcX3ll1yESgPQoRQNmwg==
   parent_name: '#us-ga'
 - name: '#us-se'
   flood_policy: allow
-  transport_key: p+7Eb74zGawYkWEN8sMlqg==
+- name: '#us-southeast'
+  flood_policy: allow
+- name: '#atl'
+  flood_policy: allow
