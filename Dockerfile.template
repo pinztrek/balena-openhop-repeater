@@ -141,6 +141,11 @@ COPY mqtt_broker.yaml /opt/openhop_repeater/mqtt_broker.yaml.example
 RUN chown $USER /opt/openhop_repeater/mqtt_broker.yaml.example
 RUN chmod a+rw /opt/openhop_repeater/mqtt_broker.yaml.example
 
+# Region (transport_keys) dump/load helper scripts
+COPY scripts/dump_regions.py /usr/local/bin/dump-regions
+COPY scripts/load_regions.py /usr/local/bin/load-regions
+RUN chmod +x /usr/local/bin/dump-regions /usr/local/bin/load-regions
+
 USER repeater
 WORKDIR /etc/openhop_repeater
 
