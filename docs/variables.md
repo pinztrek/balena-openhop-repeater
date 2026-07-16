@@ -31,6 +31,7 @@ Set these via the balenaCloud dashboard for your fleet or specific device to con
 * **GUEST** Set guest pw (repeater.security.guest_password)
 * **READONLY** Set to true to read only access (security.allow_read_only)
 * **UNSCOPED** Set to true to enable unscoped forwarding (mesh.unscoped_flood_allow)
+* **REGION_DEFAULT** Set to a region name (lowercase letters, digits, hyphens only — e.g. `us-ga`, `us-ga-atl`) to set `mesh.default_region` in config.yaml. No leading `#`. Invalid values are skipped with a warning rather than written.
 * **PATHHASH** Set to 0 or 1 change path hash # of bytes (mesh.path_hash_mode) default is 1 for 2 byte
 * **TXDELAY** Set to change TX delay factor (delays.tx_delay_factor) default is 1.25
 * **EMAIL** Set for broker email (normally req'd for mqtt)  (mqtt_brokers.email)

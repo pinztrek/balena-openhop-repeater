@@ -258,6 +258,13 @@ if [[ "$UNSCOPED" ]]; then
     yq -i '.mesh.unscoped_flood_allow = env(UNSCOPED)' config.yaml
 fi
 
+if [[ "$REGION_DEFAULT" =~ ^[a-z0-9-]+$ ]]; then
+    echo "Set REGION_DEFAULT to $REGION_DEFAULT"
+    yq -i '.mesh.default_region = env(REGION_DEFAULT)' config.yaml
+elif [[ "$REGION_DEFAULT" ]]; then
+    echo "REGION_DEFAULT=$REGION_DEFAULT is not valid, skipping"
+fi
+
 if [[ "$PATHHASH" ]]; then
     echo "Set PATHHASH to $PATHHASH"
     yq -i '.mesh.path_hash_mode = env(PATHHASH)' config.yaml
