@@ -3,14 +3,15 @@
 # before building (edit this file) or after deploying (edit the seeded
 # /etc/openhop_repeater/regions.yaml directly, or use dump-regions/load-regions).
 # Note that you can delete the transport key line and openhop will create it as needed
+- name: '#us-southeast'
+  flood_policy: allow
 - name: '#us-ga'
   flood_policy: allow
+  parent_name: '#us-southeast'
 - name: '#us-ga-atl'
   flood_policy: allow
   parent_name: '#us-ga'
 - name: '#us-se'
-  flood_policy: allow
-- name: '#us-southeast'
   flood_policy: allow
 - name: '#atl'
   flood_policy: allow
