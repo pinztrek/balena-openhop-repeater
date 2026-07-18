@@ -401,11 +401,17 @@ fi
 
 echo "docker-entrypoint.sh starting app, recycling every ${RECYCLE}s"
 
-# REGIONS=1/true seeds regions.yaml from the default example if missing, then
-# loads it into repeater.db's transport_keys table (full replace via
-# load-regions) prior to starting openhop-repeater.
+# REGIONS=override forces the default regions.yaml, replacing any existing one.
+# REGIONS=1/true seeds regions.yaml from the default example only if missing.
+# Either way, the resulting file is then loaded into repeater.db's
+# transport_keys table (full replace via load-regions) prior to starting
+# openhop-repeater.
 REGIONS_FILE="$CONFIG_DIR/regions.yaml"
-if [[ "$REGIONS" ]] && [ ! -f "$REGIONS_FILE" ]; then
+if [[ "$REGIONS" == "override" ]]; then
+    echo "REGIONS=override, forcing default regions.yaml..."
+    cp "$OPT_DIR/regions.yaml.example" "$REGIONS_FILE"
+    sudo chown repeater:repeater "$REGIONS_FILE"
+elif [[ "$REGIONS" ]] && [ ! -f "$REGIONS_FILE" ]; then
     echo "Seeding default regions.yaml..."
     cp "$OPT_DIR/regions.yaml.example" "$REGIONS_FILE"
     sudo chown repeater:repeater "$REGIONS_FILE"
