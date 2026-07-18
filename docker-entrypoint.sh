@@ -223,7 +223,10 @@ if [[ "$ADMIN" ]]; then
     yq -i '.repeater.security.admin_password = env(ADMIN)' config.yaml
 fi
 
-if [[ "$GUEST" ]]; then
+if [[ "$GUEST" == "null" ]]; then
+    echo "Set GUEST pw to null"
+    yq -i '.repeater.security.guest_password = null' config.yaml
+elif [[ "$GUEST" ]]; then
     echo "Set GUEST pw to $GUEST"
     yq -i '.repeater.security.guest_password = env(GUEST)' config.yaml
 fi
@@ -238,19 +241,25 @@ if [[ "$ADVERT" ]]; then
     yq -i '.repeater.send_advert_interval_hours = env(ADVERT)' config.yaml
 fi
 
-if [[ "$ADAPTIVE" ]]; then
+if [[ "$ADAPTIVE" =~ ^(true|false)$ ]]; then
     echo "Set ADAPTIVE to $ADAPTIVE"
     yq -i '.repeater.advert_adaptive.enabled = env(ADAPTIVE)' config.yaml
+elif [[ "$ADAPTIVE" ]]; then
+    echo "ADAPTIVE=$ADAPTIVE is not valid, must be true or false, skipping"
 fi
 
-if [[ "$LIMIT" ]]; then
+if [[ "$LIMIT" =~ ^(true|false)$ ]]; then
     echo "Set LIMIT to $LIMIT"
     yq -i '.repeater.advert_rate_limit.enabled = env(LIMIT)' config.yaml
+elif [[ "$LIMIT" ]]; then
+    echo "LIMIT=$LIMIT is not valid, must be true or false, skipping"
 fi
 
-if [[ "$PENALTY" ]]; then
+if [[ "$PENALTY" =~ ^(true|false)$ ]]; then
     echo "Set PENALTY to $PENALTY"
     yq -i '.repeater.advert_penalty_box.enabled = env(PENALTY)' config.yaml
+elif [[ "$PENALTY" ]]; then
+    echo "PENALTY=$PENALTY is not valid, must be true or false, skipping"
 fi
 
 if [[ "$UNSCOPED" ]]; then
