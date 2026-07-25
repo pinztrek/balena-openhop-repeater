@@ -24,3 +24,14 @@
     insecure: false
   use_jwt_auth: true
   audience: mqtt-us-v1.letsmesh.net
+- name: waev
+  enabled: true
+  host: mqtt.waev.app
+  port: 443
+  transport: websockets
+  audience: mqtt.waev.app
+  use_jwt_auth: true
+  format: waev
+  tls:
+    enabled: true
+    insecure: false
