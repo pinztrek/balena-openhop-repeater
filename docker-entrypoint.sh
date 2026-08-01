@@ -448,6 +448,13 @@ echo "OPENHOP exited, backing up $LIB_DIR to $CONFIG_DIR/backup"
 mkdir -p "$CONFIG_DIR/backup"
 cp "$LIB_DIR"/rep* "$CONFIG_DIR/backup/"
 
+echo "Refreshing $MQTT_BROKER_FILE from current config.yaml brokers"
+if [ -f "$MQTT_BROKER_FILE" ]; then
+    cp "$MQTT_BROKER_FILE" "$CONFIG_DIR/backup/mqtt_broker.yaml"
+fi
+yq '.mqtt_brokers.brokers' "$CONFIG_FILE" > "$MQTT_BROKER_FILE"
+sudo chown repeater:repeater "$MQTT_BROKER_FILE"
+
 if [[ "$REGIONS" ]]; then
     echo "Saving current regions to $REGIONS_FILE"
     dump-regions -o "$REGIONS_FILE"
