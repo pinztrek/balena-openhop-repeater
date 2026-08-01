@@ -41,9 +41,16 @@ fi
 echo "delay set to $OPENHOP_DELAY"
 
 if [[ ! "$RECYCLE" ]]; then
-        RECYCLE=21600 # 6 hours
+        RECYCLE=6 # hours
 fi
-echo "recycle set to $RECYCLE seconds"
+
+if [[ "$RECYCLE" == "false" ]]; then
+        RECYCLE_SECONDS=infinity
+        echo "recycle disabled"
+else
+        RECYCLE_SECONDS=$(( RECYCLE * 3600 ))
+        echo "recycle set to $RECYCLE hours (${RECYCLE_SECONDS}s)"
+fi
 
 
 # Configuration Paths
@@ -428,14 +435,14 @@ openhop-repeater &
 APP_PID=$!
 echo "openhop-repeater started (pid $APP_PID)"
 
-( sleep "$RECYCLE" ) &
+( sleep "$RECYCLE_SECONDS" ) &
 TIMER_PID=$!
 
 # Wait for whichever finishes first: the app exiting, or the recycle timer.
 wait -n "$APP_PID" "$TIMER_PID"
 
 if kill -0 "$APP_PID" 2>/dev/null; then
-    echo "RECYCLE timer (${RECYCLE}s) expired, stopping openhop-repeater (pid $APP_PID)"
+    echo "RECYCLE timer (${RECYCLE} hours) expired, stopping openhop-repeater (pid $APP_PID)"
     kill "$APP_PID"
     wait "$APP_PID" 2>/dev/null
 else
