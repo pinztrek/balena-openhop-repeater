@@ -5,7 +5,6 @@ services:
     build: 
       context: .
       args:
-        JUNK: "junk"
         TARGET_HASH: "origin/dev"
         #TARGET_HASH: "dcaa4ac"
     privileged: true
