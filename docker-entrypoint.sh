@@ -115,6 +115,9 @@ fi
 
 if [[ "$NODE_NAME" ]]; then
     echo "Set node_name to $NODE_NAME"
+    # Use as the container's syslog hostname too, so forwarded log lines show
+    # the friendly node name instead of the container's default short ID.
+    sudo hostname "$NODE_NAME" 2>/dev/null || echo "Could not set hostname to $NODE_NAME (continuing)"
     CURRENT_NAME=$(yq '.repeater.node_name // ""' config.yaml)
     if [[ "$CURRENT_NAME" != "$NODE_NAME" ]]; then
         yq -i '.repeater.node_name = env(NODE_NAME)' config.yaml
@@ -398,7 +401,7 @@ fi
 grep -q 'pymc_repeater' "$CONFIG_FILE" && sed -i 's|pymc_repeater|openhop_repeater|g' "$CONFIG_FILE"
 
 if [[ "$SYSLOG" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*(:[0-9]+)?$ ]]; then
-    LOG_TAG="${NODE_NAME}"
+    LOG_TAG="openhop-repeater"
     echo "Logging to syslog as $LOG_TAG"
     # Redirect the rest of this script's stdout/stderr through tee+logger,
     # rather than piping just the app, so `openhop-repeater &` below stays
