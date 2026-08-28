@@ -84,11 +84,16 @@ RUN mkdir -p /var/run/sshd && \
 
 
 # Create system user, group, and permissions
+# Defaults !fqdn: sudo otherwise re-resolves the live hostname (which
+# NODE_NAME changes at runtime) on every sudo call, and /etc/hosts can't be
+# updated to match on a read-only rootfs, so it just warns harmlessly
+# ("unable to resolve host ...: no address associated with hostname").
 RUN groupadd --gid "$PGID" "$GROUP" \
     && groupadd -f gpio \
     && useradd --uid "$PUID" --gid "$PGID" --home-dir /var/lib/openhop_repeater --create-home --shell /usr/bin/bash "$USER" \
     && usermod -aG gpio "$USER" \
-    && echo "repeater ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+    && echo "repeater ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers \
+    && echo "Defaults !fqdn" >> /etc/sudoers
 
 # set the password for the service user
 # ARG PASSWORD to override
