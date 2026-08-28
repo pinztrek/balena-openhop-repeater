@@ -2,6 +2,19 @@ policy_engine:
   enabled: true
   default_action: allow
   rules:
+  - id: 5
+    name: Wardriving Unscoped
+    enabled: true
+    if:
+      all:
+      - field: route_type
+        op: equals
+        value: 1
+      - field: channel_hash
+        op: equals
+        value: '0x81'
+    then:
+      action: drop
   - id: 1
     name: Wardriving
     enabled: true
