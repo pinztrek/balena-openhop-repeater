@@ -1,4 +1,5 @@
 *swp
 mqtt*local
 *.secret
+mqtt_secret.yaml
 

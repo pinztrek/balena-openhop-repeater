@@ -142,6 +142,11 @@ COPY mqtt_broker.yaml /opt/openhop_repeater/mqtt_broker.yaml.example
 RUN chown $USER /opt/openhop_repeater/mqtt_broker.yaml.example
 RUN chmod a+rw /opt/openhop_repeater/mqtt_broker.yaml.example
 
+# Copy sanitized example for the manual, gitignored mqtt_secret.yaml (private/credentialed brokers)
+COPY mqtt_secret.yaml.example /opt/openhop_repeater/mqtt_secret.yaml.example
+RUN chown $USER /opt/openhop_repeater/mqtt_secret.yaml.example
+RUN chmod a+rw /opt/openhop_repeater/mqtt_secret.yaml.example
+
 # Region (transport_keys) dump/load helper scripts
 COPY scripts/dump_regions.py /usr/local/bin/dump-regions
 COPY scripts/load_regions.py /usr/local/bin/load-regions

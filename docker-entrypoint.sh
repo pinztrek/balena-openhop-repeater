@@ -343,6 +343,23 @@ if [[ "$BROKER" ]] && [ -f "$MQTT_BROKER_FILE" ]; then
     fi
 fi
 
+# mqtt_secret.yaml is a manual, gitignored companion to mqtt_broker.yaml for
+# brokers that carry real credentials (e.g. a private/paid feed). Same list
+# format, so entries can be copied straight from mqtt_broker.yaml. If present,
+# its entries are merged into config.yaml's mqtt_brokers.brokers on every
+# start (replacing any prior entry with the same name), independent of
+# BROKER. It is never written back out, unlike mqtt_broker.yaml below.
+MQTT_SECRET_FILE="$CONFIG_DIR/mqtt_secret.yaml"
+if [ -f "$MQTT_SECRET_FILE" ]; then
+    echo "Including brokers from mqtt_secret.yaml"
+    while IFS= read -r NAME; do
+        [ -z "$NAME" ] && continue
+        export NAME
+        yq -i 'del(.mqtt_brokers.brokers[] | select(.name == strenv(NAME)))' config.yaml
+    done < <(yq '.[].name' "$MQTT_SECRET_FILE")
+    yq -i '.mqtt_brokers.brokers = ((.mqtt_brokers.brokers // []) + load("mqtt_secret.yaml"))' config.yaml
+fi
+
 
 # start ntp, defaults are fine
 echo "Starting ntpd"
@@ -462,7 +479,21 @@ echo "Refreshing $MQTT_BROKER_FILE from current config.yaml brokers"
 if [ -f "$MQTT_BROKER_FILE" ]; then
     cp "$MQTT_BROKER_FILE" "$CONFIG_DIR/backup/mqtt_broker.yaml"
 fi
-yq '.mqtt_brokers.brokers' "$CONFIG_FILE" > "$MQTT_BROKER_FILE"
+# Exclude any brokers sourced from mqtt_secret.yaml so their credentials never
+# get written into mqtt_broker.yaml - that file is user-editable/shareable and
+# is not meant to hold secrets.
+BROKER_DUMP_SRC="$CONFIG_FILE"
+if [ -f "$MQTT_SECRET_FILE" ]; then
+    BROKER_DUMP_SRC="$CONFIG_DIR/.broker_dump.yaml"
+    cp "$CONFIG_FILE" "$BROKER_DUMP_SRC"
+    while IFS= read -r NAME; do
+        [ -z "$NAME" ] && continue
+        export NAME
+        yq -i 'del(.mqtt_brokers.brokers[] | select(.name == strenv(NAME)))' "$BROKER_DUMP_SRC"
+    done < <(yq '.[].name' "$MQTT_SECRET_FILE")
+fi
+yq '.mqtt_brokers.brokers' "$BROKER_DUMP_SRC" > "$MQTT_BROKER_FILE"
+[ "$BROKER_DUMP_SRC" != "$CONFIG_FILE" ] && rm -f "$BROKER_DUMP_SRC"
 sudo chown repeater:repeater "$MQTT_BROKER_FILE"
 
 if [[ "$REGIONS" ]]; then
