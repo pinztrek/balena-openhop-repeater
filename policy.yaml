@@ -67,6 +67,32 @@ policy_engine:
         value: 6
     then:
       action: drop
+  - id: 6
+    name: Req high hop
+    enabled: true
+    if:
+      all:
+      - field: payload_type
+        op: equals
+        value: 0
+      - field: hop_count
+        op: greater_than
+        value: 4
+    then:
+      action: drop
+  - id: 7
+    name: Anon high hop
+    enabled: true
+    if:
+      all:
+      - field: payload_type
+        op: equals
+        value: 7
+      - field: hop_count
+        op: greater_than
+        value: 4
+    then:
+      action: drop
   objects:
     channel_hash_groups: {}
     pubkey_groups: {}
