@@ -37,6 +37,18 @@ RUN pwd; ls -al ; grep -i version openhop_repeater.egg-info/PKG-INFO
 #RUN ls -al /usr/local/bin
 #RUN ls -al /usr/local/lib
 
+# 2. Install lorascan (LoRa band scanner / interference heat map, CLI only
+# for now). Core package has zero required deps, so this stays plain pip
+# install -- spidev/gpiod/mqtt extras get added once hardware access is
+# wired up, to avoid pulling in build deps before they're needed.
+ARG LORASCAN_REF=v0.1.28
+RUN git clone https://github.com/Loomwave/lorascan.git /tmp/lorascan-src && \
+    git -C /tmp/lorascan-src checkout "$LORASCAN_REF" && \
+    pip install --no-cache-dir /tmp/lorascan-src && \
+    rm -rf /tmp/lorascan-src
+
+RUN lorascan --version
+
 # --- Stage 2: Runtime -----------------------------------------------
 #FROM python:3.12-bookworm-slim
 FROM python:3.12-slim
@@ -155,6 +167,10 @@ RUN chmod a+rw /opt/openhop_repeater/mqtt_secret.yaml.example
 # Region (transport_keys) dump/load helper scripts
 COPY scripts/dump_regions.py /usr/local/bin/dump-regions
 COPY scripts/load_regions.py /usr/local/bin/load-regions
+
+# lorascan 500 kHz slot-survey wrapper (reads openhop's own radio config)
+COPY scripts/scan_500.sh /usr/local/bin/scan_500.sh
+RUN chmod +x /usr/local/bin/scan_500.sh
 RUN chmod +x /usr/local/bin/dump-regions /usr/local/bin/load-regions
 
 USER repeater
