@@ -14,9 +14,19 @@
 set -euo pipefail
 
 CONFIG="${OPENHOP_CONFIG:-/etc/openhop_repeater/config.yaml}"
-DB="${1:-/var/lib/openhop_repeater/lorascan/scan_500-$(date +%Y%m%d-%H%M%S).db}"
+DB="/var/lib/openhop_repeater/lorascan/scan_500-$(date +%Y%m%d-%H%M%S).db"
 DURATION="${LORASCAN_DURATION:-12h}"
 PROFILE="/var/lib/openhop_repeater/lorascan/auto-openhop.yaml"
+
+# Leading non-option argument (if any) overrides the default DB path, as
+# before. Anything else -- leading options, or options after the DB path --
+# is passed straight through to `lorascan scan survey`, appended after our
+# defaults so it can override them (argparse takes the last value given).
+if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
+    DB="$1"
+    shift
+fi
+
 REPORT="${DB%.db}.html"
 
 if pgrep -x openhop-repeater >/dev/null 2>&1; then
@@ -44,7 +54,7 @@ PY
 echo "scan_500: running $DURATION 500 kHz slot survey -> $DB"
 lorascan scan survey --profile "$PROFILE" --db "$DB" \
     --bw 62,125,250,500 --cad-grid 500000 --sfs 7,9,11 --bws 125,250,500 \
-    --duration "$DURATION"
+    --duration "$DURATION" "$@"
 
 echo "scan_500: report -> $REPORT"
 lorascan report --db "$DB" --out "$REPORT" --slot 500000 --recommend-grid
