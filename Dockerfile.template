@@ -15,7 +15,7 @@ RUN echo "DEBUG: TARGET_HASH is currently set to ${TARGET_HASH}"
 RUN DEBIAN_FRONTEND=noninteractive apt-get update 
 
 RUN apt-get install -y --no-install-recommends \
-    git build-essential python3-dev libffi-dev libusb-1.0-0-dev swig librrd-dev \
+    git build-essential python3-dev libffi-dev libusb-1.0-0-dev swig librrd-dev libgpiod-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -37,16 +37,17 @@ RUN pwd; ls -al ; grep -i version openhop_repeater.egg-info/PKG-INFO
 #RUN ls -al /usr/local/bin
 #RUN ls -al /usr/local/lib
 
-# 2. Install lorascan (LoRa band scanner / interference heat map, CLI only
-# for now). Core package has zero required deps, so this stays plain pip
-# install -- spidev/gpiod/mqtt extras get added once hardware access is
-# wired up, to avoid pulling in build deps before they're needed.
+# 2. Install lorascan (LoRa band scanner / interference heat map for the
+# SX1262 radio). Installed with the [spidev] extra for real hardware access
+# (spidev + gpiod Python bindings, the latter built via SWIG against
+# libgpiod-dev above) -- without it, `lorascan setup`/`scan` fail with
+# "the gpiod module is missing".
 # Pinned to v0.1.30 -- bump LORASCAN_REF (and the build cache, see below)
 # to pick up a newer lorascan release.
 ARG LORASCAN_REF=v0.1.30
 RUN git clone https://github.com/Loomwave/lorascan.git /tmp/lorascan-src && \
     git -C /tmp/lorascan-src checkout "$LORASCAN_REF" && \
-    pip install --no-cache-dir /tmp/lorascan-src && \
+    pip install --no-cache-dir "/tmp/lorascan-src[spidev]" && \
     rm -rf /tmp/lorascan-src
 
 RUN lorascan --version
