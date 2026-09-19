@@ -1,22 +1,30 @@
 #!/bin/bash
 # scan_500.sh - LoRa-clean 500 kHz slot survey using openHOP's own radio config.
 #
-# Resolves the SX1262 wiring from openhop_repeater's config.yaml (the same
-# file the running daemon reads) via lorascan's openhop auto-resolver, runs
-# a multi-bandwidth survey with a 500 kHz CAD grid, and reports the cleanest
+# Runs `lorascan setup --non-interactive` against openhop_repeater's own
+# config.yaml to pull the SX1262 pins and antenna lat/long straight from it
+# and validate the radio wiring (probe/self-test/first-light). This is
+# idempotent -- a re-run with unchanged config just prints "setup: unchanged"
+# -- so it's safe to run every time this script runs, including the very
+# first time on a device that has never run lorascan before. Then runs a
+# multi-bandwidth survey with a 500 kHz CAD grid and reports the cleanest
 # MeshCore-500-aligned 500 kHz channel.
 #
 # openhop-repeater must NOT be running (or holding the radio) while this
 # scans -- there is only one SPI device. openhop-repeater runs here as a
 # plain background process (see docker-entrypoint.sh), not a systemd unit,
-# so `lorascan auto`'s systemctl-based stop/restore does not apply in this
-# container; stop the daemon by hand first.
+# so stop the daemon by hand first.
 set -euo pipefail
 
 CONFIG="${OPENHOP_CONFIG:-/etc/openhop_repeater/config.yaml}"
-DB="/var/lib/openhop_repeater/lorascan/scan_500-$(date +%Y%m%d-%H%M%S).db"
+
+# All of lorascan's state (station config, board profiles, etc.) lives here
+# instead of the default ~/.config/lorascan, so it survives on the same
+# persistent volume openhop_repeater itself uses.
+export LORASCAN_DIR="${LORASCAN_DIR:-/var/lib/openhop_repeater/lorascan}"
+
+DB="$LORASCAN_DIR/scan_500-$(date +%Y%m%d-%H%M%S).db"
 DURATION="${LORASCAN_DURATION:-12h}"
-PROFILE="/var/lib/openhop_repeater/lorascan/auto-openhop.yaml"
 
 # Leading non-option argument (if any) overrides the default DB path, as
 # before. Anything else -- leading options, or options after the DB path --
@@ -34,25 +42,23 @@ if pgrep -x openhop-repeater >/dev/null 2>&1; then
     exit 1
 fi
 
-mkdir -p "$(dirname "$DB")"
+mkdir -p "$LORASCAN_DIR"
 
-echo "scan_500: resolving radio profile from $CONFIG"
-python3 - "$CONFIG" "$PROFILE" <<'PY'
-import sys
-from lorascan import autoconf
-from lorascan.profile import dump_profile
+# --from openhop already pulls the antenna location out of config.yaml on
+# its own, but pass --cell explicitly so the location used is never left to
+# an internal default if that changes.
+CELL_LAT=$(yq '.repeater.latitude // ""' "$CONFIG")
+CELL_LON=$(yq '.repeater.longitude // ""' "$CONFIG")
+CELL_ARGS=()
+if [[ -n "$CELL_LAT" && "$CELL_LAT" != "null" && -n "$CELL_LON" && "$CELL_LON" != "null" ]]; then
+    CELL_ARGS=(--cell "${CELL_LAT},${CELL_LON}")
+fi
 
-config, out = sys.argv[1], sys.argv[2]
-r = autoconf.resolve("openhop", config=config)
-with open(out, "w") as f:
-    f.write(dump_profile(r.profile, "auto-configured from openhop config by scan_500.sh"))
-print(f"[scan_500] radio: {r.profile.bus_type} {r.profile.bus_dev}")
-for n in r.notes:
-    print(f"[scan_500] note: {n}")
-PY
+echo "scan_500: running non-interactive setup from $CONFIG"
+lorascan setup --non-interactive --from openhop --config "$CONFIG" "${CELL_ARGS[@]}"
 
 echo "scan_500: running $DURATION 500 kHz slot survey -> $DB"
-lorascan scan survey --profile "$PROFILE" --db "$DB" \
+lorascan scan survey --profile auto-openhop --db "$DB" \
     --bw 62,125,250,500 --cad-grid 500000 --sfs 7,9,11 --bws 125,250,500 \
     --duration "$DURATION" "$@"
 

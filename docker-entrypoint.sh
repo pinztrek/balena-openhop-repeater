@@ -449,6 +449,56 @@ if [[ "$REGIONS" ]] && [ -f "$REGIONS_FILE" ]; then
     load-regions "$REGIONS_FILE"
 fi
 
+# LORASCAN=true runs a lorascan radio survey before starting openhop-repeater,
+# using the radio profile (and latitude/longitude) that lorascan's own
+# non-interactive setup resolves from openhop's own config.yaml, plus
+# lorascan's own default scan options. LORASCAN=<minutes> (integer >1) runs
+# that survey for the given number of minutes instead of the default.
+# Leave blank/unset/false/0 to skip.
+# LORASCAN_OPT can hold any extra `lorascan scan survey` options (e.g.
+# "--networks /etc/openhop_repeater/networks.yaml -v"), appended after the
+# options above so it can override them (argparse takes the last value
+# given). Word-split on whitespace, so simple flags/values only -- no
+# quoting support for values containing spaces.
+LORASCAN_DEFAULT_MINUTES=10
+if [[ "$LORASCAN" && "$LORASCAN" != "false" && "$LORASCAN" != "0" ]]; then
+    if [[ "$LORASCAN" =~ ^[0-9]+$ ]] && [ "$LORASCAN" -gt 1 ]; then
+        LORASCAN_MINUTES="$LORASCAN"
+    else
+        LORASCAN_MINUTES="$LORASCAN_DEFAULT_MINUTES"
+    fi
+
+    # All of lorascan's state (station config, board profiles, etc.) lives
+    # here instead of the default ~/.config/lorascan, so it survives on the
+    # same persistent volume openhop_repeater itself uses.
+    export LORASCAN_DIR="${LORASCAN_DIR:-$LIB_DIR/lorascan}"
+    LORASCAN_DB="$LORASCAN_DIR/entrypoint-$(date +%Y%m%d-%H%M%S).db"
+    mkdir -p "$LORASCAN_DIR"
+
+    # --from openhop already pulls the antenna location out of config.yaml on
+    # its own, but pass --cell explicitly so it's never left to an internal
+    # default if that changes.
+    LORASCAN_LAT=$(yq '.repeater.latitude // ""' "$CONFIG_FILE")
+    LORASCAN_LON=$(yq '.repeater.longitude // ""' "$CONFIG_FILE")
+    LORASCAN_CELL_ARGS=()
+    if [[ -n "$LORASCAN_LAT" && "$LORASCAN_LAT" != "null" && -n "$LORASCAN_LON" && "$LORASCAN_LON" != "null" ]]; then
+        LORASCAN_CELL_ARGS=(--cell "${LORASCAN_LAT},${LORASCAN_LON}")
+    fi
+
+    echo "LORASCAN set: running non-interactive setup from $CONFIG_FILE"
+    lorascan setup --non-interactive --from openhop --config "$CONFIG_FILE" "${LORASCAN_CELL_ARGS[@]}" \
+        || echo "LORASCAN setup failed (continuing anyway)"
+
+    echo "LORASCAN set: running ${LORASCAN_MINUTES}m lorascan survey -> $LORASCAN_DB"
+    lorascan scan survey --profile auto-openhop --db "$LORASCAN_DB" \
+        --duration "${LORASCAN_MINUTES}m" \
+        $LORASCAN_OPT \
+        || echo "LORASCAN survey failed (continuing to start openhop-repeater)"
+
+    # Keep only the last 3 survey DBs
+    ls -1t "$LORASCAN_DIR"/entrypoint-*.db 2>/dev/null | tail -n +4 | xargs -r rm -f
+fi
+
 # Now run the application
 #exec "$@"
 openhop-repeater &

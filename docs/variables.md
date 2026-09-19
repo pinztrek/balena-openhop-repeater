@@ -42,6 +42,8 @@ Set these via the balenaCloud dashboard for your fleet or specific device to con
 * **US** Set to `1` to apply US/Canada radio region defaults to config.yaml (910.525MHz / SF7 / BW62.5)
 * **RADIO** Set to hardware profile name from `radio-settings.json` to configure SX1262 GPIO pin assignments (e.g. `RADIO=zebra`, `RADIO=nebrahat`). Merges profile into the `sx1262` config section.
 * **PWR** Set to desired power in dbm to override radio/region defaults
+* **LORASCAN** Set to `true` to run a `lorascan` radio survey before starting _openhop_repeater_ each boot, using the radio profile (and latitude/longitude) lorascan auto-resolves from `config.yaml`, with lorascan's own default scan options. Set to an integer greater than `1` to run the survey for that many minutes instead of the default (10 minutes). Leave blank/unset/`false`/`0` to skip.
+* **LORASCAN_OPT** Extra options to append to the `lorascan scan survey` call when `LORASCAN` is set (e.g. `--networks /etc/openhop_repeater/networks.yaml -v`) — appended after the options `LORASCAN` already sets, so they can override those (argparse takes the last value given). Word-split on whitespace; no quoting support for values containing spaces. Has no effect when `LORASCAN` is unset.
 
 ***Logging***
 * **SYSLOG** Set to an IP or hostname, with optional port (e.g. `192.168.1.100`, `192.168.1.100:514`, `syslog.example.com`). Port defaults to 514 if omitted. When set: starts rsyslogd, seeds `/etc/openhop_repeater/rsyslog.conf` on first run, and updates the active forwarding target on every restart via sed (other conf edits are preserved). Pipes all openhop output through `logger` tagged with `NODE_NAME`.
