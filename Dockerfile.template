@@ -172,8 +172,8 @@ COPY scripts/dump_regions.py /usr/local/bin/dump-regions
 COPY scripts/load_regions.py /usr/local/bin/load-regions
 
 # lorascan 500 kHz slot-survey wrapper (reads openhop's own radio config)
-COPY scripts/scan_500.sh /usr/local/bin/scan_500.sh
-RUN chmod +x /usr/local/bin/scan_500.sh
+COPY scripts/scan500 /usr/local/bin/scan500
+RUN chmod +x /usr/local/bin/scan500
 RUN chmod +x /usr/local/bin/dump-regions /usr/local/bin/load-regions
 
 USER repeater

@@ -1,5 +1,5 @@
 #!/bin/bash
-# scan_500.sh - LoRa-clean 500 kHz slot survey using openHOP's own radio config.
+# scan500 - LoRa-clean 500 kHz slot survey using openHOP's own radio config.
 #
 # Runs `lorascan setup --non-interactive` against openhop_repeater's own
 # config.yaml to pull the SX1262 pins and antenna lat/long straight from it
@@ -18,12 +18,14 @@ set -euo pipefail
 
 CONFIG="${OPENHOP_CONFIG:-/etc/openhop_repeater/config.yaml}"
 
-# All of lorascan's state (station config, board profiles, etc.) lives here
-# instead of the default ~/.config/lorascan, so it survives on the same
-# persistent volume openhop_repeater itself uses.
-export LORASCAN_DIR="${LORASCAN_DIR:-/var/lib/openhop_repeater/lorascan}"
+# lorascan's config, board profiles, network table and share token live under
+# the config volume alongside openhop's own config.yaml. Only scan databases
+# (and their reports) go under the data volume -- keep --db pointed there
+# explicitly rather than relying on --data-dir's default file placement.
+export LORASCAN_DIR="${LORASCAN_DIR:-/etc/openhop_repeater/lorascan}"
+LORASCAN_DB_DIR="${LORASCAN_DB_DIR:-/var/lib/openhop_repeater/lorascan}"
 
-DB="$LORASCAN_DIR/scan_500-$(date +%Y%m%d-%H%M%S).db"
+DB="$LORASCAN_DB_DIR/scan500-$(date +%Y%m%d-%H%M%S).db"
 DURATION="${LORASCAN_DURATION:-12h}"
 
 # Leading non-option argument (if any) overrides the default DB path, as
@@ -38,11 +40,16 @@ fi
 REPORT="${DB%.db}.html"
 
 if pgrep -x openhop-repeater >/dev/null 2>&1; then
-    echo "scan_500: openhop-repeater is running and holds the radio -- stop it first" >&2
+    echo "scan500: openhop-repeater is running and holds the radio -- stop it first" >&2
     exit 1
 fi
 
-mkdir -p "$LORASCAN_DIR"
+mkdir -p "$LORASCAN_DIR" "$LORASCAN_DB_DIR"
+
+run_lorascan() {
+    echo "+ $*"
+    "$@"
+}
 
 # --from openhop already pulls the antenna location out of config.yaml on
 # its own, but pass --cell explicitly so the location used is never left to
@@ -54,13 +61,13 @@ if [[ -n "$CELL_LAT" && "$CELL_LAT" != "null" && -n "$CELL_LON" && "$CELL_LON" !
     CELL_ARGS=(--cell "${CELL_LAT},${CELL_LON}")
 fi
 
-echo "scan_500: running non-interactive setup from $CONFIG"
-lorascan setup --non-interactive --from openhop --config "$CONFIG" "${CELL_ARGS[@]}"
+echo "scan500: running non-interactive setup from $CONFIG"
+run_lorascan lorascan setup --non-interactive --from openhop --config "$CONFIG" "${CELL_ARGS[@]}"
 
-echo "scan_500: running $DURATION 500 kHz slot survey -> $DB"
-lorascan scan survey --profile auto-openhop --db "$DB" \
+echo "scan500: running $DURATION 500 kHz slot survey -> $DB"
+run_lorascan lorascan scan survey --profile auto-openhop --db "$DB" \
     --bw 62,125,250,500 --cad-grid 500000 --sfs 7,9,11 --bws 125,250,500 \
     --duration "$DURATION" "$@"
 
-echo "scan_500: report -> $REPORT"
-lorascan report --db "$DB" --out "$REPORT" --slot 500000 --recommend-grid
+echo "scan500: report -> $REPORT"
+run_lorascan lorascan report --db "$DB" --out "$REPORT" --slot 500000 --recommend-grid

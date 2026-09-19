@@ -451,15 +451,21 @@ fi
 
 # LORASCAN=true runs a lorascan radio survey before starting openhop-repeater,
 # using the radio profile (and latitude/longitude) that lorascan's own
-# non-interactive setup resolves from openhop's own config.yaml, plus
-# lorascan's own default scan options. LORASCAN=<minutes> (integer >1) runs
-# that survey for the given number of minutes instead of the default.
-# Leave blank/unset/false/0 to skip.
+# non-interactive setup resolves from openhop's own config.yaml, and the same
+# multi-bandwidth/CAD-grid scan recipe as scripts/scan500 (500 kHz slot
+# survey). LORASCAN=<minutes> (integer >1) runs that survey for the given
+# number of minutes instead of the default. Leave blank/unset/false/0 to skip.
 # LORASCAN_OPT can hold any extra `lorascan scan survey` options (e.g.
 # "--networks /etc/openhop_repeater/networks.yaml -v"), appended after the
 # options above so it can override them (argparse takes the last value
 # given). Word-split on whitespace, so simple flags/values only -- no
 # quoting support for values containing spaces.
+# On a successful survey, the resulting DB is uploaded via `lorascan share`.
+run_lorascan() {
+    echo "+ $*"
+    "$@"
+}
+
 LORASCAN_DEFAULT_MINUTES=10
 if [[ "$LORASCAN" && "$LORASCAN" != "false" && "$LORASCAN" != "0" ]]; then
     if [[ "$LORASCAN" =~ ^[0-9]+$ ]] && [ "$LORASCAN" -gt 1 ]; then
@@ -468,12 +474,14 @@ if [[ "$LORASCAN" && "$LORASCAN" != "false" && "$LORASCAN" != "0" ]]; then
         LORASCAN_MINUTES="$LORASCAN_DEFAULT_MINUTES"
     fi
 
-    # All of lorascan's state (station config, board profiles, etc.) lives
-    # here instead of the default ~/.config/lorascan, so it survives on the
-    # same persistent volume openhop_repeater itself uses.
-    export LORASCAN_DIR="${LORASCAN_DIR:-$LIB_DIR/lorascan}"
-    LORASCAN_DB="$LORASCAN_DIR/entrypoint-$(date +%Y%m%d-%H%M%S).db"
-    mkdir -p "$LORASCAN_DIR"
+    # lorascan's config, board profiles, network table and share token live
+    # under the config volume alongside openhop's own config.yaml. Only scan
+    # databases go under the data volume (LIB_DIR) -- keep --db pointed there
+    # explicitly rather than relying on --data-dir's default file placement.
+    export LORASCAN_DIR="${LORASCAN_DIR:-$CONFIG_DIR/lorascan}"
+    LORASCAN_DB_DIR="${LORASCAN_DB_DIR:-$LIB_DIR/lorascan}"
+    LORASCAN_DB="$LORASCAN_DB_DIR/entrypoint-$(date +%Y%m%d-%H%M%S).db"
+    mkdir -p "$LORASCAN_DIR" "$LORASCAN_DB_DIR"
 
     # --from openhop already pulls the antenna location out of config.yaml on
     # its own, but pass --cell explicitly so it's never left to an internal
@@ -486,17 +494,24 @@ if [[ "$LORASCAN" && "$LORASCAN" != "false" && "$LORASCAN" != "0" ]]; then
     fi
 
     echo "LORASCAN set: running non-interactive setup from $CONFIG_FILE"
-    lorascan setup --non-interactive --from openhop --config "$CONFIG_FILE" "${LORASCAN_CELL_ARGS[@]}" \
+    run_lorascan lorascan setup --non-interactive --from openhop --config "$CONFIG_FILE" "${LORASCAN_CELL_ARGS[@]}" \
         || echo "LORASCAN setup failed (continuing anyway)"
 
     echo "LORASCAN set: running ${LORASCAN_MINUTES}m lorascan survey -> $LORASCAN_DB"
-    lorascan scan survey --profile auto-openhop --db "$LORASCAN_DB" \
+    if run_lorascan lorascan scan survey --profile auto-openhop --db "$LORASCAN_DB" \
+        --bw 62,125,250,500 --cad-grid 500000 --sfs 7,9,11 --bws 125,250,500 \
         --duration "${LORASCAN_MINUTES}m" \
-        $LORASCAN_OPT \
-        || echo "LORASCAN survey failed (continuing to start openhop-repeater)"
+        $LORASCAN_OPT
+    then
+        echo "LORASCAN set: uploading share for $LORASCAN_DB"
+        run_lorascan lorascan share --db "$LORASCAN_DB" --to https://share.lorascan.app \
+            || echo "LORASCAN share failed (continuing anyway)"
+    else
+        echo "LORASCAN survey failed (continuing to start openhop-repeater)"
+    fi
 
     # Keep only the last 3 survey DBs
-    ls -1t "$LORASCAN_DIR"/entrypoint-*.db 2>/dev/null | tail -n +4 | xargs -r rm -f
+    ls -1t "$LORASCAN_DB_DIR"/entrypoint-*.db 2>/dev/null | tail -n +4 | xargs -r rm -f
 fi
 
 # Now run the application
