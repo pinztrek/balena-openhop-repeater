@@ -109,11 +109,11 @@ But, once running, you will periodically want to refresh your fleet with the lat
 There are multiple ways to do this, see [docs/update.md](docs/update.md) for update procedures.
 
 # AI acknowledgement:
-This project is hand written. I do occasionally use claude-code to help make tedious revisions or help tourbleshoot obscure issues. But it is **NOT** vibe coded. And all edits are reviewed before execution. 
+This project is hand written. I do occasionally use claude-code to help make tedious revisions or help troubleshoot obscure issues. But it is **NOT** vibe coded. And all edits are reviewed before execution. 
 
 # Credit:
 *  [LLoyd openhop-dev](https://github.com/openhop-dev) The excellent openhop_repeater project itself is why we are here. [https://github.com/openhop-dev/openhop_repeater](https://github.com/openhop-dev/openhop_repeater)
-*  [Michael Gillet's](https://github.com/migillett) (migillett) docker contribution to the openhop_repeater code [https://github.com/migillett/openhop_repeater](https://github.com/migillett/openhop_repeater) informed inital prototype of this balena based project. There are still tidbits leveraged in the build. 
+*  [Michael Gillet's](https://github.com/migillett) (migillett) docker contribution to the openhop_repeater code [https://github.com/migillett/openhop_repeater](https://github.com/migillett/openhop_repeater) informed inital prototype of this balena based project as I ported from my balena-meshtasticd project. There are still tidbits leveraged in the build. 
 
 ---
 *Maintained by [pinztrek](https://github.com/pinztrek/balena-openhop-repeater)*
