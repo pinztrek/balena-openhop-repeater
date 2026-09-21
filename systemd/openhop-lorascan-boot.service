@@ -1,0 +1,25 @@
+# Boot-time lorascan survey, gated on the LORASCAN env var. Runs the same
+# scan recipe as scripts/scan500 and shares the resulting DB on success.
+# This is a one-shot boot survey, distinct from a future on-demand
+# lorascan-scan.service that will let a survey be started/stopped at will.
+[Unit]
+Description=openHop boot-time lorascan survey (LORASCAN=<minutes>)
+After=network-online.target openhop-configure.service
+Before=openhop-repeater.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=repeater
+Group=repeater
+SupplementaryGroups=plugdev dialout gpio
+EnvironmentFile=-/etc/docker.env
+ExecCondition=/bin/bash -c '[[ "$LORASCAN" && "$LORASCAN" != "false" && "$LORASCAN" != "0" ]]'
+ExecStart=/usr/local/bin/openhop-lorascan-boot.sh
+
+StandardOutput=journal+console
+StandardError=journal+console
+SyslogIdentifier=openhop-lorascan-boot
+
+[Install]
+WantedBy=multi-user.target

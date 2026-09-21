@@ -1,0 +1,204 @@
+# Systemd-managed variant of Dockerfile.template. Runs real systemd as PID 1
+# (balena's own documented pattern for multi-process services -- see
+# https://docs.balena.io/learn/more/masterclasses/services-masterclass and
+# github.com/balena-io/services-masterclass, systemd/printer/*) so
+# openhop-repeater and openhop-plugin-manager run as independently
+# start/stop-able systemd units, using the project's own stock unit files
+# (openhop-dev/openhop_repeater's openhop-repeater.service and
+# repeater/plugins/openhop-plugin-manager.service) with minimal changes.
+#
+# Not wired into docker-compose.yml yet -- this is the systemd feature
+# branch's build; see docs/systemd.md for how to build/run it and what still
+# needs doing before it replaces Dockerfile.template.
+
+# --- Stage 1: Build & Install ---
+FROM python:3.12 AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+ARG TARGET_HASH
+RUN echo "DEBUG: TARGET_HASH is currently set to ${TARGET_HASH}"
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get update
+
+RUN apt-get install -y --no-install-recommends \
+    git build-essential python3-dev python3-venv libffi-dev libusb-1.0-0-dev swig librrd-dev libgpiod-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+RUN git clone -b dev https://github.com/openhop-dev/openhop_repeater.git . && \
+    git fetch --all && \
+    git checkout $TARGET_HASH && \
+    git fetch --tags
+
+# Install into a real venv at /opt/openhop_repeater/venv (rather than the
+# base image's system Python) so upstream's own openhop-repeater.service and
+# openhop-plugin-manager.service unit files -- which hardcode
+# /opt/openhop_repeater/venv/bin/... -- work unmodified.
+RUN python3 -m venv /opt/openhop_repeater/venv
+RUN /opt/openhop_repeater/venv/bin/pip install --no-cache-dir setuptools setuptools-scm && \
+    export SETUPTOOLS_SCM_PRETEND_VERSION=$(/opt/openhop_repeater/venv/bin/python3 -m setuptools_scm) && \
+    /opt/openhop_repeater/venv/bin/pip install --no-cache-dir .[hardware,rrd]
+
+RUN pwd; ls -al ; grep -i version openhop_repeater.egg-info/PKG-INFO
+
+# Install lorascan (LoRa band scanner / interference heat map for the SX1262
+# radio) into the same venv, with the [spidev] extra for real hardware
+# access (spidev + gpiod Python bindings) -- without it, `lorascan
+# setup`/`scan` fail with "the gpiod module is missing".
+# Pinned to v0.1.30 -- bump LORASCAN_REF (and the build cache) to pick up a
+# newer lorascan release.
+ARG LORASCAN_REF=v0.1.30
+RUN git clone https://github.com/Loomwave/lorascan.git /tmp/lorascan-src && \
+    git -C /tmp/lorascan-src checkout "$LORASCAN_REF" && \
+    /opt/openhop_repeater/venv/bin/pip install --no-cache-dir "/tmp/lorascan-src[spidev]" && \
+    rm -rf /tmp/lorascan-src
+
+RUN /opt/openhop_repeater/venv/bin/lorascan --version
+
+# --- Stage 2: Runtime -----------------------------------------------
+FROM python:3.12-slim
+
+ENV USER=repeater \
+    GROUP=repeater \
+    PUID=15888 \
+    PGID=15888 \
+    PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive \
+    PATH=/opt/openhop_repeater/venv/bin:$PATH
+
+ARG YQ_VERSION=v4.40.5
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    jq \
+    vim.tiny \
+    nano \
+    iproute2 \
+    net-tools \
+    sudo \
+    wget \
+    procps \
+    openssh-client \
+    kmod \
+    gpiod \
+    libgpiod-dev \
+    i2c-tools \
+    pciutils \
+    usbutils \
+    openssh-server \
+    curl \
+    ca-certificates \
+    ntpsec \
+    rrdtool \
+    rsyslog \
+    dbus \
+    systemd \
+    && rm -rf /var/lib/apt/lists/*
+
+# Mask units that don't make sense inside a container (no real console,
+# hardware already managed by the host/balenaOS, etc.) -- same list balena's
+# own systemd-in-a-service reference uses.
+RUN systemctl mask \
+    dev-hugepages.mount \
+    sys-fs-fuse-connections.mount \
+    sys-kernel-config.mount \
+    display-manager.service \
+    getty@.service \
+    systemd-logind.service \
+    systemd-remount-fs.service \
+    getty.target \
+    graphical.target
+
+RUN systemctl set-default multi-user.target
+
+# Setup sshd
+RUN mkdir -p /var/run/sshd && \
+    sed -i 's/#PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config && \
+    echo "AllowUsers repeater" >> /etc/ssh/sshd_config
+
+RUN groupadd --gid "$PGID" "$GROUP" \
+    && groupadd -f gpio \
+    && useradd --uid "$PUID" --gid "$PGID" --home-dir /var/lib/openhop_repeater --create-home --shell /usr/bin/bash "$USER" \
+    && usermod -aG gpio "$USER" \
+    && echo "repeater ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers \
+    && echo "Defaults !fqdn" >> /etc/sudoers
+
+ARG DEFAULT_PASSWORD="repeater"
+RUN echo "${USER}:${PASSWORD:-$DEFAULT_PASSWORD}" | /usr/sbin/chpasswd
+
+# Copy the venv (openhop_repeater + lorascan, both installed above)
+COPY --from=builder /opt/openhop_repeater/venv /opt/openhop_repeater/venv
+
+# Copy the binaries (scripts) -- dump-regions/load-regions import repeater.*,
+# so they need the venv ahead of system python3 on PATH (set above).
+COPY --from=builder /app/convert* /usr/local/bin/
+
+# Copy config files
+COPY --from=builder /app/radio* /opt/openhop_repeater/
+COPY --from=builder /app/config.yaml.example /opt/openhop_repeater
+COPY policy.yaml /opt/openhop_repeater/policy.yaml.example
+COPY regions.yaml.example /opt/openhop_repeater/regions.yaml.example
+RUN sed -i 's/\(tx_delay_factor:\) 1.0/\1 1.25/' /opt/openhop_repeater/config.yaml.example
+RUN sed -i 's/\(path_hash_mode:\) 0/\1 1/' /opt/openhop_repeater/config.yaml.example
+RUN sed -i 's/\(max_clients:\) 1/\1 3/' /opt/openhop_repeater/config.yaml.example
+
+RUN mkdir -p /opt/openhop_repeater /etc/openhop_repeater /var/lib/openhop_repeater \
+    && chown -R repeater:repeater /opt/openhop_repeater /etc/openhop_repeater /var/lib/openhop_repeater
+
+# Install yq
+RUN BALENA_ARCH_CLEAN="%%BALENA_ARCH%%" \
+    && if [ "${BALENA_ARCH_CLEAN}" = "aarch64" ]; then YQ_ARCH="arm64"; else YQ_ARCH="${BALENA_ARCH_CLEAN}"; fi \
+    && wget -qO /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${YQ_ARCH}" \
+    && chmod +x /usr/local/bin/yq
+
+RUN curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64 -o \
+    /usr/local/bin/cloudflared \
+    && chmod +x /usr/local/bin/cloudflared
+
+RUN echo "set -o vi" >> /etc/bash.bashrc && echo "alias ll='ls -l'" >> /etc/bash.bashrc
+
+# Copy default broker yaml
+COPY mqtt_broker.yaml /opt/openhop_repeater/mqtt_broker.yaml.example
+RUN chown $USER /opt/openhop_repeater/mqtt_broker.yaml.example
+RUN chmod a+rw /opt/openhop_repeater/mqtt_broker.yaml.example
+
+COPY mqtt_secret.yaml.example /opt/openhop_repeater/mqtt_secret.yaml.example
+RUN chown $USER /opt/openhop_repeater/mqtt_secret.yaml.example
+RUN chmod a+rw /opt/openhop_repeater/mqtt_secret.yaml.example
+
+# Region (transport_keys) dump/load helper scripts, lorascan wrapper
+COPY scripts/dump_regions.py /usr/local/bin/dump-regions
+COPY scripts/load_regions.py /usr/local/bin/load-regions
+COPY scripts/scan500 /usr/local/bin/scan500
+RUN chmod +x /usr/local/bin/scan500 /usr/local/bin/dump-regions /usr/local/bin/load-regions
+
+# Config/pre-start/backup scripts (replace docker-entrypoint.sh's role)
+COPY scripts/openhop-configure.sh /usr/local/bin/openhop-configure.sh
+COPY scripts/openhop-lorascan-boot.sh /usr/local/bin/openhop-lorascan-boot.sh
+COPY scripts/openhop-backup.sh /usr/local/bin/openhop-backup.sh
+RUN chmod +x /usr/local/bin/openhop-configure.sh /usr/local/bin/openhop-lorascan-boot.sh /usr/local/bin/openhop-backup.sh
+
+# Systemd units + entrypoint
+COPY systemd/openhop-repeater.service /etc/systemd/system/openhop-repeater.service
+COPY systemd/openhop-plugin-manager.service /etc/systemd/system/openhop-plugin-manager.service
+COPY systemd/openhop-configure.service /etc/systemd/system/openhop-configure.service
+COPY systemd/openhop-lorascan-boot.service /etc/systemd/system/openhop-lorascan-boot.service
+COPY systemd/openhop-recycle.service /etc/systemd/system/openhop-recycle.service
+COPY systemd/openhop-recycle.timer /etc/systemd/system/openhop-recycle.timer
+RUN systemctl enable \
+    openhop-repeater.service \
+    openhop-plugin-manager.service \
+    openhop-configure.service \
+    openhop-lorascan-boot.service \
+    openhop-recycle.timer
+
+COPY systemd/entry.sh /usr/bin/entry.sh
+RUN chmod +x /usr/bin/entry.sh
+
+WORKDIR /etc/openhop_repeater
+
+# systemd requires RTMIN+3 (37) to shut down cleanly rather than SIGTERM.
+STOPSIGNAL 37
+ENTRYPOINT ["/usr/bin/entry.sh"]

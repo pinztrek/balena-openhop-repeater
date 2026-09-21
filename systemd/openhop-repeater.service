@@ -1,0 +1,55 @@
+# Vendored from upstream openhop-dev/openhop_repeater (openhop-repeater.service),
+# used as close to stock as possible so this stays in sync with the project's
+# own native systemd install. Changes from upstream:
+#   - EnvironmentFile= added so balena/docker env vars (dumped to
+#     /etc/docker.env by systemd/entry.sh) reach this unit.
+#   - ExecStopPost= added to run the same "back up state on exit" step the
+#     old docker-entrypoint.sh did after the app stopped.
+#   - `gpio` added to SupplementaryGroups (this image's group for SPI/GPIO
+#     device access, alongside upstream's own plugdev/dialout).
+#   - After=/Wants= extended so this waits on our own openhop-configure.service
+#     and openhop-lorascan-boot.service (the env/config setup and the
+#     boot-time lorascan survey) before starting.
+[Unit]
+Description=openHop Repeater Daemon
+After=network-online.target dbus.socket openhop-configure.service openhop-lorascan-boot.service
+Wants=network-online.target
+Requires=dbus.socket
+Wants=openhop-configure.service openhop-lorascan-boot.service
+
+[Service]
+Type=simple
+User=repeater
+Group=repeater
+WorkingDirectory=/var/lib/openhop_repeater
+EnvironmentFile=-/etc/docker.env
+
+# Start command - use venv python to avoid system package conflicts
+ExecStart=/opt/openhop_repeater/venv/bin/python -m repeater.main --config /etc/openhop_repeater/config.yaml
+ExecStopPost=/usr/local/bin/openhop-backup.sh
+
+# Restart on failure
+Restart=on-failure
+RestartSec=5
+
+# Allow up to 10s for graceful shutdown before SIGKILL
+TimeoutStopSec=10
+
+# Resource limits
+MemoryHigh=256M
+
+# Logging
+StandardOutput=journal+console
+StandardError=journal+console
+SyslogIdentifier=openhop-repeater
+
+# Security (relaxed for service self-restart via sudo)
+ReadWritePaths=/var/log/openhop_repeater /var/lib/openhop_repeater /etc/openhop_repeater
+SupplementaryGroups=plugdev dialout gpio
+
+# Allow GPS time sync to update CLOCK_REALTIME without running as root, also allow changing user via polkit or sudo
+CapabilityBoundingSet=CAP_SYS_TIME CAP_SETUID CAP_SETGID
+AmbientCapabilities=CAP_SYS_TIME
+
+[Install]
+WantedBy=multi-user.target

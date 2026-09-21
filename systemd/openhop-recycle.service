@@ -1,0 +1,9 @@
+# Forces a clean restart of the repeater on a timer, replacing the old
+# docker-entrypoint.sh RECYCLE loop (which killed the app and let the whole
+# container exit/restart). Under systemd we just restart the one unit.
+[Unit]
+Description=openHop periodic repeater restart (RECYCLE)
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl try-restart openhop-repeater.service

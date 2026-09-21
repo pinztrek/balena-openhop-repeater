@@ -1,0 +1,24 @@
+# Runs the env-var -> config.yaml templating that docker-entrypoint.sh used
+# to do inline (OWNER, NODE_NAME, RADIO, POLICY, BROKER, etc.), plus starting
+# the always-on side daemons (ntpd, sshd, rsyslogd, cloudflared) the same way
+# the old entrypoint did. Idempotent -- safe to run on every boot.
+[Unit]
+Description=openHop env/config setup (runs before the repeater starts)
+After=network-online.target
+Before=openhop-repeater.service openhop-lorascan-boot.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=repeater
+Group=repeater
+SupplementaryGroups=plugdev dialout gpio
+EnvironmentFile=-/etc/docker.env
+ExecStart=/usr/local/bin/openhop-configure.sh
+
+StandardOutput=journal+console
+StandardError=journal+console
+SyslogIdentifier=openhop-configure
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,14 @@
+# Default period (6h, matching the old RECYCLE default) -- overridden by
+# openhop-configure.sh writing a drop-in at
+# /etc/systemd/system/openhop-recycle.timer.d/override.conf from the RECYCLE
+# env var, or by stopping/disabling this timer entirely when RECYCLE=false.
+[Unit]
+Description=Periodic openHop repeater restart timer
+
+[Timer]
+OnBootSec=6h
+OnUnitActiveSec=6h
+Unit=openhop-recycle.service
+
+[Install]
+WantedBy=timers.target
