@@ -179,11 +179,27 @@ RUN chmod +x /usr/local/bin/scan500 /usr/local/bin/dump-regions /usr/local/bin/l
 COPY scripts/openhop-configure.sh /usr/local/bin/openhop-configure.sh
 COPY scripts/openhop-lorascan-boot.sh /usr/local/bin/openhop-lorascan-boot.sh
 COPY scripts/openhop-backup.sh /usr/local/bin/openhop-backup.sh
-RUN chmod +x /usr/local/bin/openhop-configure.sh /usr/local/bin/openhop-lorascan-boot.sh /usr/local/bin/openhop-backup.sh
+COPY scripts/openhop-plugin-preinstall.py /usr/local/bin/openhop-plugin-preinstall.py
+RUN chmod +x /usr/local/bin/openhop-configure.sh /usr/local/bin/openhop-lorascan-boot.sh /usr/local/bin/openhop-backup.sh /usr/local/bin/openhop-plugin-preinstall.py
+
+# waev:outpost (the openHop application UI plugin, formerly pymc_console) --
+# bundled so it's already installed on first boot instead of requiring a
+# manual Plugins-page install. Pinned to a specific release (not "latest":
+# the asset filename embeds the version, so there's no stable alias to
+# track, unlike lorascan's own release naming). Actual install/enable
+# happens at boot via openhop-plugin-preinstall.service, using the real
+# PluginManager API against the persistent data volume -- see
+# scripts/openhop-plugin-preinstall.py.
+ARG WAEV_PLUGIN_VERSION=0.9.395
+RUN mkdir -p /opt/openhop_repeater/plugins && \
+    curl -fsSL -o "/opt/openhop_repeater/plugins/waev_outpost_plugin-${WAEV_PLUGIN_VERSION}-py3-none-any.whl" \
+        "https://github.com/Treehouse-00/waev-outpost-plugin/releases/download/v${WAEV_PLUGIN_VERSION}/waev_outpost_plugin-${WAEV_PLUGIN_VERSION}-py3-none-any.whl" && \
+    chown -R repeater:repeater /opt/openhop_repeater/plugins
 
 # Systemd units + entrypoint
 COPY systemd/openhop-repeater.service /etc/systemd/system/openhop-repeater.service
 COPY systemd/openhop-plugin-manager.service /etc/systemd/system/openhop-plugin-manager.service
+COPY systemd/openhop-plugin-preinstall.service /etc/systemd/system/openhop-plugin-preinstall.service
 COPY systemd/openhop-configure.service /etc/systemd/system/openhop-configure.service
 COPY systemd/openhop-lorascan-boot.service /etc/systemd/system/openhop-lorascan-boot.service
 COPY systemd/openhop-recycle.service /etc/systemd/system/openhop-recycle.service
@@ -191,6 +207,7 @@ COPY systemd/openhop-recycle.timer /etc/systemd/system/openhop-recycle.timer
 RUN systemctl enable \
     openhop-repeater.service \
     openhop-plugin-manager.service \
+    openhop-plugin-preinstall.service \
     openhop-configure.service \
     openhop-lorascan-boot.service \
     openhop-recycle.timer

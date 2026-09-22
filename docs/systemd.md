@@ -56,6 +56,16 @@ docker compose build                                  # systemd (default here)
   unit's journal output (repeater, plugin manager, the config/lorascan
   oneshots) to the remote target -- replacing the old single `exec > >(tee
   ... logger)` redirect, which only covered the app's own stdout.
+- **Bundled plugin**: the waev:outpost application UI plugin
+  (`Treehouse-00/waev-outpost-plugin`, formerly `pymc_console`) is baked into
+  the image as a pinned wheel at `/opt/openhop_repeater/plugins/*.whl`, and
+  installed/enabled once per device via `openhop-plugin-preinstall.service`
+  (`scripts/openhop-plugin-preinstall.py`), using the real
+  `repeater.plugins.manager.PluginManager` API against the persistent data
+  volume -- not a hand-built copy of its storage layout. Runs before
+  `openhop-plugin-manager.service`, and is a no-op forever after the first
+  successful install, so a later live update or disable via the Plugins page
+  is never overwritten on a subsequent boot.
 
 ## tmpfs / persistent storage
 
@@ -103,16 +113,28 @@ wanted, but out of scope for this branch.
   (`openhop-lorascan-boot.service`) exists so far. A `lorascan-scan.service`
   (or a templated `lorascan-scan@.service`) that can be started/stopped at
   will, independent of boot, is the next step here.
-- ntpd/sshd/rsyslogd/cloudflared are still started the old way (plain
-  background processes from `openhop-configure.sh`), not as their own
-  supervised systemd units (e.g. Debian's own `ssh.service`/
-  `rsyslog.service`). Functionally unchanged from the classic build, but not
-  "real" systemd services -- a reasonable follow-up once the core
-  openhop-repeater/plugin-manager conversion has been run on real hardware.
+- `openhop-configure.sh` still starts ntpd/sshd/rsyslogd itself (plain
+  background processes), same as the classic build. **Observed on real
+  hardware**: this is now redundant for ssh/rsyslog/ntpsec specifically --
+  apt-installing `openssh-server`/`rsyslog`/`ntpsec` auto-enables their own
+  shipped units (Debian's postinst `deb-systemd-helper enable`), so
+  `ssh.service`/`rsyslog.service`/`ntpsec.service` start on their own via
+  `multi-user.target` before `openhop-configure.service` even runs; the
+  script's own `sudo sshd`/`sudo rsyslogd`/`sudo ntpd` calls are now
+  fighting over the same port/pidfile and most likely just failing
+  silently. Net effect on behavior, not just tidiness: **SSH is reachable
+  unconditionally now, regardless of the `SSH` env var** -- the gate in
+  `openhop-configure.sh` no longer controls whether `sshd` is actually
+  listening. Worth a deliberate fix (mask `ssh.service` by default, only
+  unmask/start it when `$SSH` is set) rather than leaving as-is.
+- `cloudflared` is unaffected by the above (no shipped systemd unit),
+  still a plain backgrounded process from `openhop-configure.sh`.
 - `enable`/`disable` toggling was explicitly out of scope for this pass
   (units are enabled once at image build time); only start/stop was asked
   for.
-- None of this has been run on real balena hardware yet -- it's built from
-  documented systemd/balena behavior and upstream's own shipped unit files,
-  not verified end-to-end in this environment (no local Docker/systemd
-  available to test against).
+- Confirmed working on real hardware (a zebra-duo-hat-r1 device): systemd
+  boots, `openhop-repeater.service` and `openhop-plugin-manager.service`
+  both start and stay up. Two real bugs found and fixed in the process
+  (see git log): a jq bareword lookup that broke on hyphenated `RADIO`
+  profile names, and `ReadWritePaths=` causing `status=226/NAMESPACE`
+  under balenaEngine (dropped from both unit files).

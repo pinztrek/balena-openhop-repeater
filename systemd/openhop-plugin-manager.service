@@ -8,14 +8,17 @@
 #     balenaEngine (confirmed on real hardware, cgroupsv1). Redundant here
 #     anyway -- the whole container is already the isolation boundary
 #     upstream's bare-metal install relies on this directive for.
+#   - After=/Wants= extended so this waits on our own
+#     openhop-plugin-preinstall.service (bundled-plugin install) before
+#     starting.
 #
 # Supervises installed plugins as child processes. Does not replace
 # openhop-repeater.service. Repeater continues to work if this unit is stopped.
 
 [Unit]
 Description=openHop Plugin Manager
-After=network-online.target openhop-repeater.service
-Wants=network-online.target
+After=network-online.target openhop-repeater.service openhop-plugin-preinstall.service
+Wants=network-online.target openhop-plugin-preinstall.service
 # Soft dependency: manager can start without Repeater, and vice versa
 
 [Service]

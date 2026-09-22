@@ -2,4 +2,6 @@
 mqtt*local
 *.secret
 mqtt_secret.yaml
+__pycache__/
+*.pyc
 

@@ -1,0 +1,26 @@
+# Installs the bundled waev:outpost plugin wheel (baked into the image at
+# /opt/openhop_repeater/plugins/*.whl) via the real PluginManager API, once,
+# before openhop-plugin-manager.service starts. See
+# scripts/openhop-plugin-preinstall.py -- it's a no-op once any plugin with
+# that id has ever been installed, so a later live update/disable via the
+# Plugins page is never overwritten by this on a subsequent boot.
+[Unit]
+Description=openHop bundled plugin pre-install
+After=network-online.target openhop-configure.service
+Before=openhop-plugin-manager.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=repeater
+Group=repeater
+WorkingDirectory=/var/lib/openhop_repeater
+EnvironmentFile=-/etc/docker.env
+ExecStart=/opt/openhop_repeater/venv/bin/python /usr/local/bin/openhop-plugin-preinstall.py
+
+StandardOutput=journal+console
+StandardError=journal+console
+SyslogIdentifier=openhop-plugin-preinstall
+
+[Install]
+WantedBy=multi-user.target
