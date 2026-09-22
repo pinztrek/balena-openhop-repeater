@@ -10,6 +10,11 @@
 #   - After=/Wants= extended so this waits on our own openhop-configure.service
 #     and openhop-lorascan-boot.service (the env/config setup and the
 #     boot-time lorascan survey) before starting.
+#   - ReadWritePaths= dropped: it makes systemd set up a private mount
+#     namespace for the unit, which fails with status=226/NAMESPACE under
+#     balenaEngine (confirmed on real hardware, cgroupsv1). Redundant here
+#     anyway -- the whole container is already the isolation boundary
+#     upstream's bare-metal install relies on this directive for.
 [Unit]
 Description=openHop Repeater Daemon
 After=network-online.target dbus.socket openhop-configure.service openhop-lorascan-boot.service
@@ -43,8 +48,6 @@ StandardOutput=journal+console
 StandardError=journal+console
 SyslogIdentifier=openhop-repeater
 
-# Security (relaxed for service self-restart via sudo)
-ReadWritePaths=/var/log/openhop_repeater /var/lib/openhop_repeater /etc/openhop_repeater
 SupplementaryGroups=plugdev dialout gpio
 
 # Allow GPS time sync to update CLOCK_REALTIME without running as root, also allow changing user via polkit or sudo

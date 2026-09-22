@@ -1,8 +1,13 @@
 # Vendored from upstream openhop-dev/openhop_repeater
 # (repeater/plugins/openhop-plugin-manager.service), used as close to stock
-# as possible. Only change from upstream: EnvironmentFile= added so
-# balena/docker env vars (dumped to /etc/docker.env by systemd/entry.sh)
-# reach this unit.
+# as possible. Changes from upstream:
+#   - EnvironmentFile= added so balena/docker env vars (dumped to
+#     /etc/docker.env by systemd/entry.sh) reach this unit.
+#   - ReadWritePaths= dropped: it makes systemd set up a private mount
+#     namespace for the unit, which fails with status=226/NAMESPACE under
+#     balenaEngine (confirmed on real hardware, cgroupsv1). Redundant here
+#     anyway -- the whole container is already the isolation boundary
+#     upstream's bare-metal install relies on this directive for.
 #
 # Supervises installed plugins as child processes. Does not replace
 # openhop-repeater.service. Repeater continues to work if this unit is stopped.
@@ -33,8 +38,6 @@ MemoryHigh=256M
 StandardOutput=journal+console
 StandardError=journal+console
 SyslogIdentifier=openhop-plugin-manager
-
-ReadWritePaths=/var/log/openhop_repeater /var/lib/openhop_repeater /etc/openhop_repeater
 
 [Install]
 WantedBy=multi-user.target
