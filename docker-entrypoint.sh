@@ -77,12 +77,13 @@ if [[ "$OPENHOP_RESET" ]]; then
 fi
 
 
-# Seed the radio settings if missing
-if [ ! -f "$SETTINGS_FILE" ]; then
-    echo "Install radio files..."
-    sudo cp $OPT_DIR/radio* $LIB_DIR
-    sudo chown repeater:repeater $LIB_DIR/radio*
-fi
+# Always refresh the radio settings/presets from this image, so newly-added
+# hardware profiles (e.g. a new board revision) show up without having to
+# delete a stale copy by hand. TODO: add an override/inhibit env var if this
+# ever needs to be user-editable in place.
+echo "Refreshing radio files from $OPT_DIR..."
+sudo cp $OPT_DIR/radio* $LIB_DIR
+sudo chown repeater:repeater $LIB_DIR/radio*
 # Seed the configuration if missing
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "Initializing default configuration..."
