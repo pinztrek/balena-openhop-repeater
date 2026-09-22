@@ -166,13 +166,21 @@ if [ "$RADIO" ]; then
     # Have to do this in two steps due to yq funkiness
     echo Lookup $RADIO and update values into $CONFIG_FILE
 
-    RADIO_JSON=$(jq -c ".hardware.$RADIO | del(.name, .tx_power, .preamble_length)" "$SETTINGS_FILE")
-    export RADIO_JSON
-    echo "Read JSON: $RADIO_JSON"
-    echo "As YAML:"
-    echo "$RADIO_JSON" | yq -pj -P '.'
-    echo "Writing to $CONFIG_FILE"
-    yq -iP '.sx1262 *= (strenv(RADIO_JSON) | from_json)' "$CONFIG_FILE"
+    # Bracket/--arg form, not `.hardware.$RADIO` -- a bareword field access
+    # breaks on any hyphenated profile name (zebra-duo-hat-r1, nebra-duo-hat,
+    # ultrapeater-e22p, etc.), since jq parses the hyphen as subtraction.
+    RADIO_JSON=$(jq -c --arg r "$RADIO" '.hardware[$r] | del(.name, .tx_power, .preamble_length)' "$SETTINGS_FILE")
+    if [[ "$RADIO_JSON" == "null" ]]; then
+        echo "RADIO=$RADIO is not a key in $SETTINGS_FILE's .hardware map, skipping. Valid keys:"
+        jq -r '.hardware | keys[]' "$SETTINGS_FILE"
+    else
+        export RADIO_JSON
+        echo "Read JSON: $RADIO_JSON"
+        echo "As YAML:"
+        echo "$RADIO_JSON" | yq -pj -P '.'
+        echo "Writing to $CONFIG_FILE"
+        yq -iP '.sx1262 *= (strenv(RADIO_JSON) | from_json)' "$CONFIG_FILE"
+    fi
 fi
 
 # Turn power down on nebrahat
