@@ -1,0 +1,186 @@
+# Pre-systemd build, kept for reference/rollback on the `systemd` branch --
+# Dockerfile.template/docker-compose.yml are now the systemd-managed variant
+# (see docs/systemd.md). Build this one via docker-compose.classic.yml.
+
+# --- Stage 1: Build & Install ---
+#FROM python:3.12-bookworm AS builder
+FROM python:3.12 AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Build-time arguments
+# Set in docker-compose, typically origin/dev, origin/main
+# Can also be a git release hash (thus the name)
+
+ARG TARGET_HASH
+RUN echo "DEBUG: TARGET_HASH is currently set to ${TARGET_HASH}"
+
+# Install build dependencies
+RUN DEBIAN_FRONTEND=noninteractive apt-get update 
+
+RUN apt-get install -y --no-install-recommends \
+    git build-essential python3-dev libffi-dev libusb-1.0-0-dev swig librrd-dev libgpiod-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# 1. Clone the repository
+WORKDIR /app
+
+
+RUN git clone -b dev https://github.com/openhop-dev/openhop_repeater.git . && \
+    git fetch --all && \
+    git checkout $TARGET_HASH && \
+    git fetch --tags 
+
+RUN pip install --no-cache-dir setuptools setuptools-scm && \
+    export SETUPTOOLS_SCM_PRETEND_VERSION=$(python3 -m setuptools_scm) && \
+    pip install --no-cache-dir .[hardware,rrd]
+
+RUN pwd; ls -al ; grep -i version openhop_repeater.egg-info/PKG-INFO
+#RUN ls -al /usr/local/bin
+#RUN ls -al /usr/local/lib
+
+# 2. Install lorascan (LoRa band scanner / interference heat map for the
+# SX1262 radio). Installed with the [spidev] extra for real hardware access
+# (spidev + gpiod Python bindings, the latter built via SWIG against
+# libgpiod-dev above) -- without it, `lorascan setup`/`scan` fail with
+# "the gpiod module is missing".
+# Pinned to v0.1.30 -- bump LORASCAN_REF (and the build cache, see below)
+# to pick up a newer lorascan release.
+ARG LORASCAN_REF=v0.1.30
+RUN git clone https://github.com/Loomwave/lorascan.git /tmp/lorascan-src && \
+    git -C /tmp/lorascan-src checkout "$LORASCAN_REF" && \
+    pip install --no-cache-dir "/tmp/lorascan-src[spidev]" && \
+    rm -rf /tmp/lorascan-src
+
+RUN lorascan --version
+
+# --- Stage 2: Runtime -----------------------------------------------
+#FROM python:3.12-bookworm-slim
+FROM python:3.12-slim
+
+# Runtime environment variables
+ENV USER=repeater \
+    GROUP=repeater \
+    PUID=15888 \
+    PGID=15888 \
+    PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive
+
+ARG YQ_VERSION=v4.40.5
+
+# Install runtime dependencies (yq, utils)
+RUN DEBIAN_FRONTEND=noninteractive apt-get update 
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    jq \
+    vim.tiny \
+    nano \
+    iproute2 \
+    net-tools \
+    sudo \
+    wget \
+    procps \
+    openssh-client \
+    kmod \
+    gpiod \
+    libgpiod-dev \
+    i2c-tools \
+    pciutils \
+    usbutils \
+    openssh-server \
+    curl \
+    ca-certificates \
+    ntpsec \
+    rrdtool \
+    rsyslog \
+    && rm -rf /var/lib/apt/lists/*
+
+# Setup sshd
+RUN mkdir -p /var/run/sshd && \
+    sed -i 's/#PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config && \
+    echo "AllowUsers repeater" >> /etc/ssh/sshd_config
+
+
+# Create system user, group, and permissions
+# Defaults !fqdn: sudo otherwise re-resolves the live hostname (which
+# NODE_NAME changes at runtime) on every sudo call, and /etc/hosts can't be
+# updated to match on a read-only rootfs, so it just warns harmlessly
+# ("unable to resolve host ...: no address associated with hostname").
+RUN groupadd --gid "$PGID" "$GROUP" \
+    && groupadd -f gpio \
+    && useradd --uid "$PUID" --gid "$PGID" --home-dir /var/lib/openhop_repeater --create-home --shell /usr/bin/bash "$USER" \
+    && usermod -aG gpio "$USER" \
+    && echo "repeater ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers \
+    && echo "Defaults !fqdn" >> /etc/sudoers
+
+# set the password for the service user
+# ARG PASSWORD to override
+ARG DEFAULT_PASSWORD="repeater"
+
+# Set the password using parameter expansion
+# If PASSWORD is unset or empty, it uses DEFAULT_PASSWORD
+RUN echo "${USER}:${PASSWORD:-$DEFAULT_PASSWORD}" | /usr/sbin/chpasswd
+
+# Copy the installed site-packages
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+
+# Copy the binaries (scripts)
+COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=builder /app/convert* /usr/local/bin/
+
+# Copy config files
+COPY --from=builder /app/radio* /opt/openhop_repeater/
+COPY --from=builder /app/config.yaml.example /opt/openhop_repeater
+COPY policy.yaml /opt/openhop_repeater/policy.yaml.example
+COPY regions.yaml.example /opt/openhop_repeater/regions.yaml.example
+RUN sed -i 's/\(tx_delay_factor:\) 1.0/\1 1.25/' /opt/openhop_repeater/config.yaml.example
+RUN sed -i 's/\(path_hash_mode:\) 0/\1 1/' /opt/openhop_repeater/config.yaml.example
+RUN sed -i 's/\(max_clients:\) 1/\1 3/' /opt/openhop_repeater/config.yaml.example
+
+# Create directories and set ownership
+RUN mkdir -p /opt/openhop_repeater /etc/openhop_repeater /var/lib/openhop_repeater \
+    && chown -R repeater:repeater /opt/openhop_repeater /etc/openhop_repeater /var/lib/openhop_repeater 
+
+RUN ls -al /etc/openhop_repeater
+
+# Install yq 
+RUN BALENA_ARCH_CLEAN="%%BALENA_ARCH%%" \
+    && if [ "${BALENA_ARCH_CLEAN}" = "aarch64" ]; then YQ_ARCH="arm64"; else YQ_ARCH="${BALENA_ARCH_CLEAN}"; fi \
+    && wget -qO /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${YQ_ARCH}" \
+    && chmod +x /usr/local/bin/yq
+
+RUN curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64 -o \
+    /usr/local/bin/cloudflared \
+    && chmod +x /usr/local/bin/cloudflared
+
+# Setup environment config
+RUN echo "set -o vi" >> /etc/bash.bashrc && echo "alias ll='ls -l'" >> /etc/bash.bashrc
+
+# Copy entrypoint
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Copy default broker yaml
+COPY mqtt_broker.yaml /opt/openhop_repeater/mqtt_broker.yaml.example
+RUN chown $USER /opt/openhop_repeater/mqtt_broker.yaml.example
+RUN chmod a+rw /opt/openhop_repeater/mqtt_broker.yaml.example
+
+# Copy sanitized example for the manual, gitignored mqtt_secret.yaml (private/credentialed brokers)
+COPY mqtt_secret.yaml.example /opt/openhop_repeater/mqtt_secret.yaml.example
+RUN chown $USER /opt/openhop_repeater/mqtt_secret.yaml.example
+RUN chmod a+rw /opt/openhop_repeater/mqtt_secret.yaml.example
+
+# Region (transport_keys) dump/load helper scripts
+COPY scripts/dump_regions.py /usr/local/bin/dump-regions
+COPY scripts/load_regions.py /usr/local/bin/load-regions
+
+# lorascan 500 kHz slot-survey wrapper (reads openhop's own radio config)
+COPY scripts/scan500 /usr/local/bin/scan500
+RUN chmod +x /usr/local/bin/scan500
+RUN chmod +x /usr/local/bin/dump-regions /usr/local/bin/load-regions
+
+USER repeater
+WORKDIR /etc/openhop_repeater
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

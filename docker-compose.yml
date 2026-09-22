@@ -1,12 +1,16 @@
 version: '2.1'
 
+# Systemd-managed build -- see docs/systemd.md. This is the default compose
+# file on the `systemd` branch; the pre-systemd compose file/Dockerfile are
+# kept as docker-compose.classic.yml / Dockerfile.classic.template for
+# reference/rollback.
+
 services:
   openhop-repeater:
-    build: 
+    build:
       context: .
       args:
         TARGET_HASH: "origin/dev"
-        #TARGET_HASH: "dcaa4ac"
     privileged: true
     cap_add:
       - SYS_RAWIO
@@ -27,6 +31,17 @@ services:
     volumes:
       - config:/etc/openhop_repeater
       - data:/var/lib/openhop_repeater
+    # systemd requires /run and /run/lock as tmpfs. /tmp is tmpfs'd too, and
+    # journald is deliberately left in its default volatile-only mode (no
+    # /var/log/journal directory created, so it logs to /run/log/journal)
+    # -- both cut the constant small writes systemd/journald otherwise
+    # makes on the SD card/eMMC down to nothing. Actual state that must
+    # survive a restart (config.yaml, the repeater.db, lorascan's scan
+    # databases) stays on the config/data volumes above, not tmpfs.
+    tmpfs:
+      - /run
+      - /run/lock
+      - /tmp
     group_add:
       - "plugdev"
       - "gpio"

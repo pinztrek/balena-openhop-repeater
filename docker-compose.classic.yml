@@ -1,0 +1,43 @@
+version: '2.1'
+
+# Pre-systemd build, kept for reference/rollback on the `systemd` branch --
+# docker-compose.yml/Dockerfile.template are now the systemd-managed variant
+# (see docs/systemd.md). To build this one instead:
+#   docker compose -f docker-compose.classic.yml build
+
+services:
+  openhop-repeater:
+    build:
+      context: .
+      dockerfile: Dockerfile.classic.template
+      args:
+        TARGET_HASH: "origin/dev"
+        #TARGET_HASH: "dcaa4ac"
+    privileged: true
+    cap_add:
+      - SYS_RAWIO
+    devices:
+      - "/dev/bus/usb:/dev/bus/usb"
+      - "/dev/spidev0.0:/dev/spidev0.0"
+      - "/dev/gpiochip0:/dev/gpiochip0"
+    ports:
+      - "8000:8000"
+      - "8080:8080"
+      - "2222:22" #allow inbound ssh
+    labels:
+      io.balena.features.dbus: '1'
+      io.balena.features.supervisor-api: '1'
+      io.balena.features.balena-api: '1'
+      # Balena uses this label to enable GPIO access
+      io.balena.features.gpio: '1'
+    volumes:
+      - config:/etc/openhop_repeater
+      - data:/var/lib/openhop_repeater
+    group_add:
+      - "plugdev"
+      - "gpio"
+    restart: always
+
+volumes:
+  config:
+  data:

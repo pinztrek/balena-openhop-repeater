@@ -11,16 +11,15 @@ rest of the container, and reuses the project's own stock unit files
 `repeater/plugins/openhop-plugin-manager.service`) rather than inventing new
 ones.
 
-Not the default build -- `Dockerfile.template`/`docker-compose.yml` are
-untouched. This variant lives in `Dockerfile.systemd.template` +
-`docker-compose.systemd.yml`, built with:
+This is the default build on the `systemd` branch -- `Dockerfile.template`/
+`docker-compose.yml` are this variant. The pre-systemd build is kept as
+`Dockerfile.classic.template` + `docker-compose.classic.yml` for
+reference/rollback:
 
 ```
-docker compose -f docker-compose.systemd.yml build
+docker compose -f docker-compose.classic.yml build   # pre-systemd
+docker compose build                                  # systemd (default here)
 ```
-
-or by pointing a separate balena fleet's `docker-compose.yml` at
-`Dockerfile.systemd.template`.
 
 ## What changed vs. the classic build
 
