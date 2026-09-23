@@ -34,7 +34,7 @@ Specifically, no arcane docker/linux knowledge is required (though some linux aw
 ## 2. Deploy by clicking the URL/Button below:
 [![balena deploy button](assets/images/deploy.svg)](https://dashboard.balena-cloud.com/deploy?repoUrl=https://github.com/pinztrek/balena-openhop-repeater)
 ### OR for bleeding edge dev balena branch (unstable):
-[![balena deploy button](assets/images/deploy.svg)](https://dashboard.balena-cloud.com/deploy?repoUrl=https://github.com/pinztrek/balena-openhop-repeater-dev)
+[![balena deploy button](assets/images/deploy.svg)](https://dashboard.balena-cloud.com/deploy?repoUrl=https://github.com/pinztrek/balena-openhop-repeater&tarballUrl=https://github.com/pinztrek/balena-openhop-repeater/archive/refs/heads/dev.tar.gz)
 
 ## 3. Once logged into balena, it will create a fleet for *balena-openhop-repeater*
 ## 4. Create your device and download the disk image
