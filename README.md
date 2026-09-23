@@ -15,6 +15,8 @@ Specifically, no arcane docker/linux knowledge is required (though some linux aw
 * **Maintenance & Debug Mode:** Includes support for debugging and terminal access to the container for manual adjustments when needed.
 * **2 stage docker build:** Builds the code, then deploys to a minimal docker image. Run image is only ~400MB!
 * **Can be manually edited via Balena terminal** Nano, vi, etc are available to edit config files in the balena terminal
+* **Plugin manager supported:** OpenHop's plugin manager runs alongside the repeater, so plugins can be installed/updated/enabled from the web GUI's Plugins page like any other openHop install.
+* **waev:outpost and lorascan installed by default:** The [waev:outpost](https://github.com/Treehouse-00/waev-outpost-plugin) console UI plugin is pre-installed and enabled out of the box, and [lorascan](https://github.com/Loomwave/lorascan) (LoRa channel survey/interference heat map) is bundled and ready to run.
 
 ## Current Status:
 * **v1.1.1-beta** OpenHop fully operational, extending remote mgt options
